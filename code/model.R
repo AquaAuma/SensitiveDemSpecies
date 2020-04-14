@@ -77,92 +77,116 @@ f.factor=1
 K=0.073
   
 l <- c(lmet:1001)
-simulations <- data.frame(l)
+sim <- data.frame(l)
 
 # Assign the exploitation pattern
-if(repro==1){simulations$expl <- EE$G1[3:nrow(EE)]
-             for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==1){sim$expl <- EE$G1[3:nrow(EE)]
+             for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
              }
 
-if(repro==2){simulations$expl <- EE$G2[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==2){sim$expl <- EE$G2[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
-if(repro==3){simulations$expl <- EE$G3[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==3){sim$expl <- EE$G3[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
-if(repro==4){simulations$expl <- EE$G4[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==4){sim$expl <- EE$G4[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
-if(repro==5){simulations$expl <- EE$G5[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==5){sim$expl <- EE$G5[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
-if(repro==6){simulations$expl <- EE$G6[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==6){sim$expl <- EE$G6[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
-if(repro==7){simulations$expl <- EE$G7[3:nrow(EE)]
-            for(i in 1:nrow(simulations))
-              if(simulations$expl[i]>1){simulations$expl[i] <- 1}
+if(repro==7){sim$expl <- EE$G7[3:nrow(EE)]
+            for(i in 1:nrow(sim))
+              if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
 # Fishing mortality
-for (i in 1:nrow(simulations)){
-  if(simulations$l<linf+0.001){simulations$Fi[i] <- linf*f.factor}
-  else{simulations$Fi[i] <- 0}
+for (i in 1:nrow(sim)){
+  if(sim$l<linf+0.001){sim$Fi[i] <- linf*f.factor}
+  else{sim$Fi[i] <- 0}
 }
 
 # Natural mortality
-simulations$M <- K*((l+0.5)/linf)^(-1.5)
+sim$M <- K*((l+0.5)/linf)^(-1.5)
 
 # Individuals
-simulations$N[1] <- 1000000000 
-for (i in 2:nrow(simulations)){
-  if(round(simulations$l+0.5)<linf) 
-  {simulations$N[i] <- simulations$N[i-1]*((linf-simulations$l[i])/(linf-simulations$l[i-1]))^((simulations$F[i-1]+simulations$M[i-1])/K)}
-  else{simulations$N[i] <- 0}
+sim$N[1] <- 1000000000 
+for (i in 2:nrow(sim)){
+  if(round(sim$l+0.5)<linf) 
+  {sim$N[i] <- sim$N[i-1]*((linf-sim$l[i])/(linf-sim$l[i-1]))^((sim$F[i-1]+sim$M[i-1])/K)}
+  else{sim$N[i] <- 0}
 }
 
 # Nav
-for (i in 1:nrow(simulations)){
-  if(simulations$l[i]<linf){simulations$Nav[i] <- (simulations$N[i]-simulations$N[i+1])/(simulations$F[i]+simulations$G[i])}
-  else{simulations$Nav[i] <- 0}
+for (i in 1:nrow(sim)){
+  if(sim$l[i]<linf){sim$Nav[i] <- (sim$N[i]-sim$N[i+1])/(sim$F[i]+sim$G[i])}
+  else{sim$Nav[i] <- 0}
 }
 
 # Prop mature
-for (i in 1:nrow(simulations)){
+for (i in 1:nrow(sim)){
   if(i==1){
-    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){simulations$propM[i] <- 0}
-    else{simulations$propM[i] <- s1}
+    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
+    else{sim$propM[i] <- s1}
   }
   if(i>1){
-    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){simulations$propM[i] <- 0}
-    else{simulations$propM[i] <- 1/(1+exp(s1-s2*(simulations$l[i]+0.5)))}
+    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
+    else{sim$propM[i] <- 1/(1+exp(s1-s2*(sim$l[i]+0.5)))}
   }
 }
 
 # SSB
-for (i in 1:nrow(simulations)){
-  if(simulations$l[i]<linf){simulations$SSB[i] <- simulations$propM[i]*simulations$Nav[i]*0.01*(simulations$l[i]+0.5)^3}
-  else if(simulations$l[i+1]>linf | simulations$propM[i]>0){simulations$SSB[i] <- 1}
-  else{simulations$SSB[i] <- 0}
+for (i in 1:nrow(sim)){
+  if(sim$l[i]<linf){sim$SSB[i] <- sim$propM[i]*sim$Nav[i]*0.01*(sim$l[i]+0.5)^3}
+  else if(sim$l[i+1]>linf | sim$propM[i]>0){sim$SSB[i] <- 1}
+  else{sim$SSB[i] <- 0}
 }
 
-# Age
-for (i in 1:nrow(simulations)){
-  if(simulations$l[i]<linf){simulations$age[i] <- (1/K)*log((linf-lmet)/(linf-simulations$l[i]))}
-  else{simulations$age[i] <- 0}
+
+# Age & days
+for (i in 1:nrow(sim)){
+  if(sim$l[i]<linf){sim$age[i] <- (1/K)*log((linf-lmet)/(linf-sim$l[i]))}
+  else{sim$age[i] <- 0}
   
-  simulations$days[i] <- simulations$age[i]*365
+  sim$days[i] <- sim$age[i]*365
 }
+
+# N1 & spawners
+sim$N1[1] <- NA
+for(i in 2:nrow(sim)){
+  # Get N1
+  if(sim$days[i]<365){
+    if(sim$days[i+1]>365){sim$N1[i] <- sim$N[i+1]}
+    else{sim$N1[i] <- 0}
+  }
+  else{sim$N1[i] <- 0}
+  
+  # Get spawners
+  if(sim$l[i]>lmat+0.001){sim$S[i] <- sim$Nav[i]}
+  else{sim$S[i] <- 0}
+}
+
+totSSB <- sum(sim$SSB)
+SSSoverR <- totSSB/sim$N[1]
+N1overSSB <- sum(sim$N1)*1000/totSSB
+N1overSpawners <- sum(sim$N1)/sum(sim$S)
+
+### Get fish sensitivity
+fishSensi <- data.frame()
 
 
