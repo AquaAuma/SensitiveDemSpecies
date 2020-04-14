@@ -5,6 +5,8 @@
 #### Coding: Aurore Maureaud
 #############################################################
 
+Sys.setenv(LANG = "en")
+
 # Libraries
 library(readr)
 library(readxl)
@@ -32,7 +34,18 @@ explo # explotation pattern from Walkter t al., 2017, code from 1-7
 #6	pelagic
 #7	lumpiform
 
+# Load trait data
+trait <- read_excel("data/Traits.xlsx")
 
+# select a spp
+s <- which(trait$Species=='Polyprion americanus')
+lmax <- trait$Lmax[s]
+linf <- trait$Linf[s]
+K <- trait$K[s]
+lmat <- trait$Lmat[s]
+lmet <- trait$Lmet[s]
+explo <- as.numeric(as.vector(trait[s,7]))
+repro <- trait$Taxonomy[s]
 
 # Estimation of missing traits
 ##############################
@@ -47,7 +60,7 @@ if (is.na(lmat)){lmat <- 0.6019*linf^(0.9726)}
 
 if (is.na(lmet)){
   if(repro == 'Oviparous'){lmet <- round(0.7917*linf^(0.5921))} # NB round on R transforms 2.5 in 2, but 2.5 --> 3 in EXCEL
-  if(repro == 'Ovoviviparous' | repro == 'Vivipar'){lmet <- round(0.5398*linf^0.7977)}
+  if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(0.5398*linf^0.7977)}
 }
 # from the present study
 
@@ -70,54 +83,31 @@ EE[1:2,10:16] <- 0
 
 # Simulations
 #############
-lmet=2
-repro=5
-linf=152
-f.factor=1
-K=0.073
-  
+fishSensi <- 99
+f.factor=-0.01
+while(fishSensi>0.25){
+  f.factor=f.factor+0.01
+
 l <- c(lmet:1001)
 sim <- data.frame(l)
 
 # Assign the exploitation pattern
-if(repro==1){sim$expl <- EE$G1[3:nrow(EE)]
-             for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-             }
+sim$expl <- NA
+if(explo==1){sim$expl <- EE$G1[3:nrow(EE)]}
+if(explo==2){sim$expl <- EE$G2[3:nrow(EE)]}
+if(explo==3){sim$expl <- EE$G3[3:nrow(EE)]}
+if(explo==4){sim$expl <- EE$G4[3:nrow(EE)]}
+if(explo==5){sim$expl <- EE$G5[3:nrow(EE)]}
+if(explo==6){sim$expl <- EE$G6[3:nrow(EE)]}
+if(explo==7){sim$expl <- EE$G7[3:nrow(EE)]}
 
-if(repro==2){sim$expl <- EE$G2[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-}
-
-if(repro==3){sim$expl <- EE$G3[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-}
-
-if(repro==4){sim$expl <- EE$G4[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-}
-
-if(repro==5){sim$expl <- EE$G5[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-}
-
-if(repro==6){sim$expl <- EE$G6[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
-}
-
-if(repro==7){sim$expl <- EE$G7[3:nrow(EE)]
-            for(i in 1:nrow(sim))
-              if(sim$expl[i]>1){sim$expl[i] <- 1}
+for(i in 1:nrow(sim)){
+  if(sim$expl[i]>1){sim$expl[i] <- 1}
 }
 
 # Fishing mortality
 for (i in 1:nrow(sim)){
-  if(sim$l<linf+0.001){sim$Fi[i] <- linf*f.factor}
+  if(sim$l[i]<linf+0.001){sim$Fi[i] <- linf*f.factor}
   else{sim$Fi[i] <- 0}
 }
 
@@ -127,25 +117,30 @@ sim$M <- K*((l+0.5)/linf)^(-1.5)
 # Individuals
 sim$N[1] <- 1000000000 
 for (i in 2:nrow(sim)){
-  if(round(sim$l+0.5)<linf) 
+  if(round(sim$l[i]+0.5)<linf) 
   {sim$N[i] <- sim$N[i-1]*((linf-sim$l[i])/(linf-sim$l[i-1]))^((sim$F[i-1]+sim$M[i-1])/K)}
   else{sim$N[i] <- 0}
 }
 
 # Nav
+sim$Nav <- NA
 for (i in 1:nrow(sim)){
-  if(sim$l[i]<linf){sim$Nav[i] <- (sim$N[i]-sim$N[i+1])/(sim$F[i]+sim$G[i])}
+  if(sim$l[i]<linf){sim$Nav[i] <- (sim$N[i]-sim$N[i+1])/(sim$F[i]+sim$M[i])}
   else{sim$Nav[i] <- 0}
 }
 
 # Prop mature
+lmatoverlinf <- lmat/linf
+s1 <- lmatoverlinf*linf*log(3)/((1.2*lmatoverlinf-lmatoverlinf)*linf)
+s2 <- s1/(lmatoverlinf*linf)
+  
 for (i in 1:nrow(sim)){
   if(i==1){
-    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
+    if(1/(1+exp(s1-s2*(sim$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
     else{sim$propM[i] <- s1}
   }
   if(i>1){
-    if(1/(1+exp(s1-s2*(simuations$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
+    if(1/(1+exp(s1-s2*(sim$l[i]+0.5)))<0.1){sim$propM[i] <- 0}
     else{sim$propM[i] <- 1/(1+exp(s1-s2*(sim$l[i]+0.5)))}
   }
 }
@@ -170,8 +165,8 @@ for (i in 1:nrow(sim)){
 sim$N1[1] <- NA
 for(i in 2:nrow(sim)){
   # Get N1
-  if(sim$days[i]<365){
-    if(sim$days[i+1]>365){sim$N1[i] <- sim$N[i+1]}
+  if(sim$days[i-1]<365){
+    if(sim$days[i]>365){sim$N1[i] <- sim$N[i]}
     else{sim$N1[i] <- 0}
   }
   else{sim$N1[i] <- 0}
@@ -181,12 +176,15 @@ for(i in 2:nrow(sim)){
   else{sim$S[i] <- 0}
 }
 
+
+# Get species sensitivity
+#########################
 totSSB <- sum(sim$SSB)
-SSSoverR <- totSSB/sim$N[1]
+SSBoverR <- totSSB/sim$N[1]
 N1overSSB <- sum(sim$N1)*1000/totSSB
 N1overSpawners <- sum(sim$N1)/sum(sim$S)
 
-### Get fish sensitivity
-fishSensi <- data.frame()
+fishSensi <- 99
+if(SSBoverR/SSBoverR0>0.25){fishSensi <- SSBoverR/SSBoverR0}
 
-
+}
