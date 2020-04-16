@@ -30,19 +30,13 @@ EE[1:2,10:16] <- 0
 
 # Parameters/traits collected or re-estimated
 #############################################
-lmax # maximum observed length
-
-linf # infinity length
-
-K # growth coefficient
-
-lmat # length at maturity
-
-lmet # length at birth/metamorphosis
-
-repro # reproduction type
-
-explo # explotation pattern from Walkter t al., 2017, code from 1-7
+# lmax maximum observed length
+# linf infinity length
+# K growth coefficient
+# lmat length at maturity
+# lmet length at birth/metamorphosis
+# repro reproduction type
+# explo explotation pattern from Walkter t al., 2017, code from 1-7
 #1	Predominatly buried in sediment
 #2	on or near sebed - anguilliform of fusiform
 #3	predominatly on seabed - flat
@@ -53,13 +47,22 @@ explo # explotation pattern from Walkter t al., 2017, code from 1-7
 
 # Load trait data
 trait <- read_excel("data/Traits.xlsx")
+trait$Fsensi <- NA
+
+##########################
+#### Get Sensi for all spp
+##########################
+
+for(s in 1:nrow(trait)){
 
 # select a spp
-s <- which(trait$Species=='Polyprion americanus')
+spp <- trait$Species[s]
+print(paste(s,spp,sep=' '))
+
+# Assign traits
 lmax <- trait$Lmax[s]
 linf <- trait$Linf[s]
-#K <- trait$K[s]
-K <- 0.073
+K <- trait$K[s]
 lmat <- trait$Lmat[s]
 lmet <- trait$Lmet[s]
 explo <- as.numeric(as.vector(trait[s,7]))
@@ -93,7 +96,7 @@ names(fishSensi) <- c('f.factor','fish.sensi')
 k <- 0
 
 # while loop to find when fishSensi==0.25
-while(sensi>0.25){
+while(sensi>0.25 & k<2001){
   f.factor <- f.factor + 0.01
   k <- k + 1
   fishSensi$f.factor[k] <- f.factor
@@ -103,13 +106,13 @@ sim <- data.frame(l)
 
 # Assign the exploitation pattern
 sim$expl <- NA
-if(explo==1){sim$expl <- as.numeric(as.vector(EE$G1[3:nrow(EE)]))}
-if(explo==2){sim$expl <- as.numeric(as.vector(EE$G2[3:nrow(EE)]))}
-if(explo==3){sim$expl <- as.numeric(as.vector(EE$G3[3:nrow(EE)]))}
-if(explo==4){sim$expl <- as.numeric(as.vector(EE$G4[3:nrow(EE)]))}
-if(explo==5){sim$expl <- as.numeric(as.vector(EE$G5[3:nrow(EE)]))}
-if(explo==6){sim$expl <- as.numeric(as.vector(EE$G6[3:nrow(EE)]))}
-if(explo==7){sim$expl <- as.numeric(as.vector(EE$G7[3:nrow(EE)]))}
+if(explo==1){sim$expl <- as.numeric(as.vector(EE$G1[(lmet+1):nrow(EE)]))}
+if(explo==2){sim$expl <- as.numeric(as.vector(EE$G2[(lmet+1):nrow(EE)]))}
+if(explo==3){sim$expl <- as.numeric(as.vector(EE$G3[(lmet+1):nrow(EE)]))}
+if(explo==4){sim$expl <- as.numeric(as.vector(EE$G4[(lmet+1):nrow(EE)]))}
+if(explo==5){sim$expl <- as.numeric(as.vector(EE$G5[(lmet+1):nrow(EE)]))}
+if(explo==6){sim$expl <- as.numeric(as.vector(EE$G6[(lmet+1):nrow(EE)]))}
+if(explo==7){sim$expl <- as.numeric(as.vector(EE$G7[(lmet+1):nrow(EE)]))}
 
 for(i in 1:nrow(sim)){
   if(sim$expl[i]<=0){sim$expl[i] <- 1}
@@ -197,4 +200,9 @@ if(f.factor==0){SSBoverR0 <- SSBoverR}
 fishSensi$fish.sensi[k] <- SSBoverR/SSBoverR0
 sensi <- SSBoverR/SSBoverR0
 
+}
+
+
+fishSensi <- subset(fishSensi, !is.na(f.factor) & fish.sensi>0.25)
+trait$Fsensi[s] <- fishSensi$f.factor[nrow(fishSensi)]
 }
