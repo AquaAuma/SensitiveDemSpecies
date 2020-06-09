@@ -30,6 +30,11 @@ EE[1:2,10:16] <- 0
 
 # Parameters/traits collected or re-estimated
 #############################################
+
+# Load trait data
+trait <- read_excel("data/Traits.xlsx")
+trait$Fsensi <- NA
+
 # lmax maximum observed length
 # linf infinity length
 # K growth coefficient
@@ -44,10 +49,6 @@ EE[1:2,10:16] <- 0
 #5	midwater species with some seabed association
 #6	pelagic
 #7	lumpiform
-
-# Load trait data
-trait <- read_excel("data/Traits.xlsx")
-trait$Fsensi <- NA
 
 ##########################
 #### Get Sensi for all spp
@@ -71,18 +72,18 @@ repro <- trait$Taxonomy[s]
 
 # Estimation of missing traits
 ##############################
-if (is.na(linf)){linf <- 0.044+0.9841*log(lmax, base=10)}
+if (is.na(linf)){linf <- 10^(0.044+0.9841*log(lmax, base=10))}
 # equation from Froese, R. and Binohlan, C., 2000. Journal of fish biology, 56(4), pp.758-773.
 
-if (is.na(K)){K <- 1.54953*linf^(0.53141)}
+if (is.na(K)){K <- 1.43323*linf^(-0.51007)}
 # from the present study
 
 if (is.na(lmat)){lmat <- 0.6019*linf^(0.9726)}
 # from the present study
 
 if (is.na(lmet)){
-  if(repro == 'Oviparous'){lmet <- round(0.7917*linf^(0.5921))} # NB round on R transforms 2.5 in 2, but 2.5 --> 3 in EXCEL
-  if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(0.5398*linf^0.7977)}
+  if(repro == 'Oviparous'){lmet <- round(exp(-0.2639+0.6009*log(linf)))} # NB round on R transforms 2.5 in 2, but 2.5 --> 3 in EXCEL
+  if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(exp(-0.6164+0.7977*log(linf)))}
 }
 # from the present study
 
@@ -206,3 +207,5 @@ sensi <- SSBoverR/SSBoverR0
 fishSensi <- subset(fishSensi, !is.na(f.factor) & fish.sensi>0.25)
 trait$Fsensi[s] <- fishSensi$f.factor[nrow(fishSensi)]
 }
+
+write.csv('results/Sensi.csv')
