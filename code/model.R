@@ -50,6 +50,29 @@ trait$Fsensi <- NA
 #6	pelagic
 #7	lumpiform
 
+
+###############################
+#### Set up trait relationships
+###############################
+# Model to estimate K from Linf
+plot(K~Linf, data=trait, log='xy')
+lmK <- lm(log(K, base=10)~log(Linf, base=10), data=trait)
+
+# Model to estimate Lmat from Linf
+plot(log(Lmat, base=10)~log(Linf, base=10), data=trait)
+lmLmat <- lm(log(Lmat, base=10)~log(Linf, base=10), data=trait)
+
+# Model to estimate Lmet from Linf for oviparous spp.
+trait.ovi <- subset(trait, Taxonomy=='Oviparous' & Lmet>2)
+plot(Lmet ~ Linf, data=trait.ovi)
+lmLmet.ovi <- lm(Lmet ~ Linf, data=trait.ovi)
+
+# Model to estimate Lmet from Linf for Ovoviparous and viviparous spp.
+trait.vivi <- subset(trait, Taxonomy %in% c('Viviparous','Ovoviparous'))
+plot(Lmet ~ Linf, data=trait.vivi)
+lmLmet.vivi <- lm(Lmet ~ Linf, data=trait.vivi)
+
+
 ##########################
 #### Get Sensi for all spp
 ##########################
@@ -75,10 +98,10 @@ repro <- trait$Taxonomy[s]
 if (is.na(linf)){linf <- 10^(0.044+0.9841*log(lmax, base=10))}
 # equation from Froese, R. and Binohlan, C., 2000. Journal of fish biology, 56(4), pp.758-773.
 
-if (is.na(K)){K <- 1.43323*linf^(-0.51007)}
+if (is.na(K)){K <- 10^(lmK$coefficients[1])*linf^(lmK$coefficients[2])}
 # from the present study
 
-if (is.na(lmat)){lmat <- 0.6019*linf^(0.9726)}
+if (is.na(lmat)){lmat <- 10^(lmLmat$coefficients[1])*linf^(lmLmat$coefficients[2])}
 # from the present study
 
 if (is.na(lmet)){
@@ -208,4 +231,4 @@ fishSensi <- subset(fishSensi, !is.na(f.factor) & fish.sensi>0.25)
 trait$Fsensi[s] <- fishSensi$f.factor[nrow(fishSensi)]
 }
 
-write.csv('results/Sensi.csv')
+write.csv(trait, 'results/Sensi.csv')
