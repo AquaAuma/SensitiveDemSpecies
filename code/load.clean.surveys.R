@@ -535,9 +535,9 @@ survey <- survey %>%
          Survey = if_else(Survey=='SCOWGFS', 'SWC-IBTS', Survey),
          Survey = if_else(Survey=='SCOROC', 'ROCKALL', Survey)) %>% 
 #there have been minor changes to the gear in these surveys, it should not affect sensitives
-  group_by(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST, AphiaID, BycSpecRecCode) %>%
+  group_by(Survey, HaulID, StatRec, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST, AphiaID, BycSpecRecCode) %>%
   summarize_at(.vars=c('numcpue', 'wtcpue', 'numh', 'wgth', 'num', 'wgt'), .funs=function(x) sum(x, na.rm=T)) %>%
-  select(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
+  select(Survey, HaulID, StatRec, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
          AphiaID, BycSpecRecCode, numcpue, wtcpue, numh, wgth, num, wgt)
 survey <- data.frame(survey)
 
@@ -590,7 +590,7 @@ dat.ices$ScientificName <- NULL
 survey <- dat.ices
 
 survey <- survey %>%
-  select(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
+  select(Survey, HaulID, StatRec, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
          Species, BycSpecRecCode, numcpue, wtcpue, numh, wgth, num, wgt)
 survey$AphiaID <- NULL
 
@@ -650,8 +650,7 @@ survey <- survey %>%
          !(Survey %in% c('BITS','BITSL')),
          !(Survey=='BTS' & Year<1987),
          !(Survey=='IE-IGFS' & Year<2003),
-         !(Survey=='NIGFS' & Year<2006),
-         )
+         !(Survey=='NIGFS' & Year<2006))
 
 #xx <- data.frame(survey2) %>% 
 #  group_by(Survey, Quarter) %>% 
@@ -660,139 +659,8 @@ survey <- survey %>%
 
 
 ##########################################################################################
-#### MAP SURVEYS
-##########################################################################################
-library(ggplot2)
-
-### NS-IBTS
-nsibts <- subset(survey, survey$Survey=='NS-IBTS')
-survey_plotting <- nsibts[!duplicated(nsibts[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-10,15),ylim=c(49,65))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### BITS
-bits <- subset(survey, survey$Survey=='BITS')
-survey_plotting <- bits[!duplicated(bits[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(5,25),ylim=c(52,60))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### SWC-BITS
-swc <- subset(survey, survey$Survey=='SWC-IBTS')
-survey_plotting <- swc[!duplicated(swc[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-15,0),ylim=c(52,60))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### FR-CGFS
-fr <- subset(survey, survey$Survey=='FR-CGFS')
-survey_plotting <- fr[!duplicated(fr[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-5,4),ylim=c(48,52))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### PT-IBTS
-pt <- subset(survey, survey$Survey=='PT-IBTS')
-survey_plotting <- pt[!duplicated(pt[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-12.5,-5),ylim=c(35,42.5))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### IE-IGFS
-ie <- subset(survey, survey$Survey=='IE-IGFS')
-survey_plotting <- ie[!duplicated(ie[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-15,0),ylim=c(50,57.5))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### NIGFS
-ni <- subset(survey, survey$Survey=='NIGFS')
-survey_plotting <- ni[!duplicated(ni[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-10,0),ylim=c(50,57.5))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### EVHOE
-ev <- subset(survey, survey$Survey=='EVHOE')
-survey_plotting <- ev[!duplicated(ev[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-15,0),ylim=c(42,55))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### ROCKALL
-rock <- subset(survey, survey$Survey=='ROCKALL')
-survey_plotting <- rock[!duplicated(rock[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+geom_point(cex = 1, col='navyblue')+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  #borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-20,-10),ylim=c(55,60))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-### ALL EUROPEAN SURVEYS
-survey_plotting <- survey[!duplicated(survey[c("ShootLong","ShootLat")]),]
-xlims <- range(pretty(survey_plotting$ShootLong))
-ylims <- range(pretty(survey_plotting$ShootLat))
-ggplot(survey_plotting,aes(ShootLong,ShootLat))+geom_point(cex = 1, col='navyblue')+
-  #borders(xlim=c(-120,-110),ylim=c(40,41),fill="azure3",colour = "black") +
-  borders(xlim=xlims,ylim=ylims,fill="lightgrey",colour = "lightgrey") +
-  coord_quickmap(xlim=c(-20,25),ylim=c(35,65))+theme_bw()+
-  geom_point(cex = 1, col='navyblue')
-
-
-##########################################################################################
 #### SAVE DATA
 ##########################################################################################
-
-rm(hl.ns, hl.ns1, hl.ns2, hl.ns4, hl.pt, hl.rock, hl.spa, hl.spn, hl.spp, hl.swc, hl, hl.baltic, hl.baltic1, hl.baltic2,
-   hl.baltic3, hl.cgfs, hl.evhoe, hl.evhoe1, hl.evhoe2, hl.igfs, hl.nigfs, hh.swc, hh.spp, hh.spn, hh.ns, hh.spa, hh.rock,
-   hh.nigfs, hh.igfs, hh.fcgs, hh.pt, nsibts, hl.ns3 ,hh.evhoe, hh.baltic, hh, surveyC, surveyR, survey_raw, survey_plotting, haulidhh, haulidhl, hhn, ids,
-   i, pb, x, xlims, ylims, df_test, keep, keep_ap, keep_sp, my_sp_taxo, aphia_list, dat.ices)
-
-
 setwd('~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data')
 save(survey, file='ICESsurveysByc18062020.RData')
-
+#load('ICESsurveysByc18062020.RData')
