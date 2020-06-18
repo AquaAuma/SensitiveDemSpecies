@@ -16,4 +16,4 @@ library(egg)
 sensi <- read.csv('results/Sensi.csv')
 
 ### Load species abundances across surveys
-survey <- load()
+survey <- load('data/ICESsurveysByc18062020.RData')

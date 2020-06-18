@@ -6,6 +6,8 @@ rm(list=ls())
 library(data.table)
 library(dplyr)
 
+re.estimate.SA <- 'FALSE'
+
 ##########################################################################################
 #### LOAD FILES
 ##########################################################################################
@@ -236,7 +238,7 @@ survey[is.na(survey$Area.swept),]$Area.swept <- survey[is.na(survey$Area.swept),
 # FR-CGFS, NIGFS and PT have no swept area calculation possible
 # For EVHOE, NS-IBTS, IE-IGFS, SWC-IBTS and ROCKALL = all values around 0.3km2
 
-if(re-estimate.SA==TRUE){
+if(re.estimate.SA==TRUE){
 # Re-estimate the swept area from a linear model per survey
 ### EVHOE ###
 evhoe <- survey %>%
@@ -490,28 +492,28 @@ survey <- survey0
 ##########################################################################################
 
 # Keep Length
-survey <- survey %>%
-  mutate(numcpue = TotalNo/Area.swept,
-         wtcpue = CatCatchWgt/(Area.swept*1000),
-         numh = TotalNo*60/HaulDur,
-         wgth = CatCatchWgt*60/(HaulDur*1000),
-         numlencpue = HLNoAtLngt/Area.swept,
-         numlenh = HLNoAtLngt*60/HaulDur,
-         wtlencpue = NA,
-         wgtlenh = NA,
-         Season = 'NA',
-         Length = LngtClass,
-         Depth = replace(Depth, Depth<0, NA),
-         SBT = replace(SBT, SBT<0, NA),
-         SST = replace(SST, SST<0, NA),
-         num=TotalNo) %>%
-  group_by(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST, AphiaID, Length) %>%
-  summarize_at(.vars=c('numcpue', 'wtcpue', 'numh', 'wgth', 'numlencpue', 'wtlencpue', 'numlenh', 'wgtlenh'), .funs=function(x) sum(x, na.rm=T)) %>%
-  select(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
-         AphiaID, numcpue, wtcpue, numh, wgth, Length, numlencpue, wtlencpue, numlenh, wgtlenh)
+#survey <- survey %>%
+#  mutate(numcpue = TotalNo/Area.swept,
+#         wtcpue = CatCatchWgt/(Area.swept*1000),
+#         numh = TotalNo*60/HaulDur,
+#         wgth = CatCatchWgt*60/(HaulDur*1000),
+#         numlencpue = HLNoAtLngt/Area.swept,
+#         numlenh = HLNoAtLngt*60/HaulDur,
+#         wtlencpue = NA,
+#         wgtlenh = NA,
+#         Season = 'NA',
+#         Length = LngtClass,
+#         Depth = replace(Depth, Depth<0, NA),
+#         SBT = replace(SBT, SBT<0, NA),
+#         SST = replace(SST, SST<0, NA),
+#         num=TotalNo) %>%
+#  group_by(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST, AphiaID, Length) %>%
+#  summarize_at(.vars=c('numcpue', 'wtcpue', 'numh', 'wgth', 'numlencpue', 'wtlencpue', 'numlenh', 'wgtlenh'), .funs=function(x) sum(x, na.rm=T)) %>%
+#  select(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
+#         AphiaID, numcpue, wtcpue, numh, wgth, Length, numlencpue, wtlencpue, numlenh, wgtlenh)
 
 # Only keep abundances/weight
-survey2 <- survey %>%
+survey <- survey %>%
   mutate(numcpue = TotalNo/Area.swept,
          wtcpue = CatCatchWgt/(Area.swept*1000),
          numh = TotalNo*60/HaulDur,
@@ -526,7 +528,8 @@ survey2 <- survey %>%
          num = if_else(Gear=='BT7', num*4/7, num),
          num = if_else(Gear=='BT8', num*4/8, num),
          Survey = as.character(Survey),
-         Survey = if_else(Survey=='BITS' & Gear=='TVS', 'BITSS', Survey), 
+         Gear = as.character(Gear),
+         Survey = dplyr::if_else(Survey=='BITS' & Gear=='TVS', 'BITSS', Survey), 
 #two different gear sizes are used in the Baltic - they cannot converted reliably for sensitives, so they are treated as separate surveys in my analysis.
          Survey = if_else(Survey=='BITS' & Gear=='TVL', 'BITSL', Survey),
          Survey = if_else(Survey=='SCOWGFS', 'SWC-IBTS', Survey),
@@ -536,6 +539,7 @@ survey2 <- survey %>%
   summarize_at(.vars=c('numcpue', 'wtcpue', 'numh', 'wgth', 'num', 'wgt'), .funs=function(x) sum(x, na.rm=T)) %>%
   select(Survey, HaulID, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
          AphiaID, BycSpecRecCode, numcpue, wtcpue, numh, wgth, num, wgt)
+survey <- data.frame(survey)
 
 
 ##########################################################################################
@@ -591,41 +595,36 @@ survey <- survey %>%
 survey$AphiaID <- NULL
 
 
-### Code to integrate from Anna on species bycatch corrections
-survey2 <- survey %>% 
-  filter_at(vars(Species), vars(BycSpecRecCode==0 & Survey=='NS-IBTS'),!(Species %in% c('Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua',
-                                                                   'Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')))
+### Code to integrate from Anna on species bycatch corrections                                                         'Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')))
 survey <- data.frame(survey)
 survey <- survey %>% 
-  filter(case_when((BycSpecRecCode==0 & Survey=='NS-IBTS') ~ 
-                     Species %in% c('Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua',
-                                     'Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')),
-         case_when(BycSpecRecCode==2 ~
-                     Species %in% c('Ammodytidae','Anarhichas lupus','Argentina silus','Argentina sphyraena',
-                                    'Chelidonichthys cuculus','Callionymus lyra','Eutrigla gurnardus','Lumpenus lampretaeformis',
-                                    'Mullus surmuletus','Squalus acanthias','Trachurus trachurus',
-                                    'Platichthys flesus','Pleuronectes platessa','Limanda limanda','Lepidorhombus whiffiagoni','Hippoglossus hippoglossus','Hippoglossoides platessoi',
-                                    'Glyptocephalus cynoglossu','Microstomus kitt','Scophthalmus maximus','Scophthalmus rhombus','Solea solea',
-                                    'Pollachius virens','Pollachius pollachius','Trisopterus luscus','Trisopterus minutus','Micromesistius poutassou','Molva molva',
-                                    'Merluccius merluccius','Brosme brosme','Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
-                                    'Merlangius merlangus','Trisopterus esmarkii')),
-         case_when(BycSpecRecCode==3 ~ 
-                     Species %in% c('Pollachius virens','Pollachius pollachius','Trisopterus luscus','Trisopterus minutus','Micromesistius poutassou','Molva molva',
-                                    'Merluccius merluccius','Brosme brosme','Clupea harengus','Sprattus sprattus',
-                                    'Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')),
-         case_when(BycSpecRecCode==4 ~
-                     Species %in% c('Platichthys flesus','Pleuronectes platessa','Limanda limanda','Lepidorhombus whiffiagoni','Hippoglossus hippoglossus','Hippoglossoides platessoi',
-                                    'Glyptocephalus cynoglossu','Microstomus kitt','Scophthalmus maximus','Scophthalmus rhombus','Solea solea',
-                                    'Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
-                                    'Merlangius merlangus','Trisopterus esmarkii')),
-         case_when(BycSpecRecCode==5 ~
-                     Species %in% c('Ammodytidae','Anarhichas lupus','Argentina silus','Argentina sphyraena',
-                                    'Chelidonichthys cuculus','Callionymus lyra','Eutrigla gurnardus','Lumpenus lampretaeformis',
-                                    'Mullus surmuletus','Squalus acanthias','Trachurus trachurus','Clupea harengus',
-                                    'Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
-                                    'Merlangius merlangus','Trisopterus esmarkii'))) %>% 
-  mutate(Species = as.factor(Species),
-         Species = if_else(Species %in% c('Dipturus batis','Dipturus flossada','Dipturus intermedia','Dipturus'),'Dipturus spp', Species),
+  mutate(Species = as.character(Species)) %>% 
+  #mutate(Survey = as.factor(Survey),
+  #       Species = as.factor(Species)) %>% 
+  
+  filter(!(BycSpecRecCode==0 & Survey=='NS-IBTS' & !Species %in% c('Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua',
+                                                                   'Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')),
+         !(BycSpecRecCode==2 & !Species %in% c('Ammodytidae','Anarhichas lupus','Argentina silus','Argentina sphyraena',
+                                                'Chelidonichthys cuculus','Callionymus lyra','Eutrigla gurnardus','Lumpenus lampretaeformis',
+                                                'Mullus surmuletus','Squalus acanthias','Trachurus trachurus',
+                                                'Platichthys flesus','Pleuronectes platessa','Limanda limanda','Lepidorhombus whiffiagoni','Hippoglossus hippoglossus','Hippoglossoides platessoi',
+                                                'Glyptocephalus cynoglossu','Microstomus kitt','Scophthalmus maximus','Scophthalmus rhombus','Solea solea',
+                                                'Pollachius virens','Pollachius pollachius','Trisopterus luscus','Trisopterus minutus','Micromesistius poutassou','Molva molva',
+                                                'Merluccius merluccius','Brosme brosme','Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
+                                                'Merlangius merlangus','Trisopterus esmarkii')),
+         !(BycSpecRecCode==3 & !Species %in% c('Pollachius virens','Pollachius pollachius','Trisopterus luscus','Trisopterus minutus','Micromesistius poutassou','Molva molva',
+                                               'Merluccius merluccius','Brosme brosme','Clupea harengus','Sprattus sprattus',
+                                               'Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')),
+         !(BycSpecRecCode==4 & !Species %in% c('Platichthys flesus','Pleuronectes platessa','Limanda limanda','Lepidorhombus whiffiagoni','Hippoglossus hippoglossus','Hippoglossoides platessoi',
+                                               'Glyptocephalus cynoglossu','Microstomus kitt','Scophthalmus maximus','Scophthalmus rhombus','Solea solea',
+                                               'Clupea harengus','Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
+                                               'Merlangius merlangus','Trisopterus esmarkii')),
+         !(BycSpecRecCode==5 & !Species %in% c('Ammodytidae','Anarhichas lupus','Argentina silus','Argentina sphyraena',
+                                               'Chelidonichthys cuculus','Callionymus lyra','Eutrigla gurnardus','Lumpenus lampretaeformis',
+                                               'Mullus surmuletus','Squalus acanthias','Trachurus trachurus','Clupea harengus',
+                                               'Sprattus sprattus','Scomber scombrus','Gadus morhua','Melanogrammus aeglefinus',
+                                               'Merlangius merlangus','Trisopterus esmarkii'))) %>% 
+  mutate(Species = if_else(Species %in% c('Dipturus batis','Dipturus flossada','Dipturus intermedia','Dipturus'),'Dipturus spp', Species),
          Species = if_else(Sepcies %in% c('Liparis montagui','Liparis liparis','Liparis liparis liparis'),'Liparis spp', Species),
          Species = if_else(Species %in% c('Chelon aurata','Chelon ramada'),'Chelon spp',Species),
          Species = if_else(Species %in% c('Mustelus','Mustelus mustelus','Mustelus asterias'), 'Mustelus spp', Species),
@@ -645,14 +644,18 @@ survey <- survey %>%
 ##########################################################################################
 survey <- survey %>% 
   filter(!(Survey=='NS-IBTS' & Quarter %in% c(2,4)),
+         !(Survey=='NS-IBTS' & Quarter==1 & Year<1967),
          !(Survey=='SWC-IBTS' & Quarter %in% c(2,3)),
-         !(Survey=='BITSS' & Quarter %in% c(2,3)))
+         !(Survey=='BITSS' & Quarter %in% c(2,3)),
+         !(Survey %in% c('BITS','BITSL')),
+         !(Survey=='BTS' & Year<1987),
+         !(Survey=='IE-IGFS' & Year<2003),
+         !(Survey=='NIGFS' & Year<2006),
+         )
 
-survey <- data.frame(survey)
-xx <- survey %>% 
-  group_by(Survey, Quarter) %>% 
-  dplyr::summarize(Hauls=length(unique(HaulID)))
-
+#xx <- data.frame(survey2) %>% 
+#  group_by(Survey, Quarter) %>% 
+#  dplyr::summarize(Hauls=length(unique(HaulID)), Year=paste(min(Year), max(Year), sep='-'))
 
 
 
@@ -790,11 +793,6 @@ rm(hl.ns, hl.ns1, hl.ns2, hl.ns4, hl.pt, hl.rock, hl.spa, hl.spn, hl.spp, hl.swc
    i, pb, x, xlims, ylims, df_test, keep, keep_ap, keep_sp, my_sp_taxo, aphia_list, dat.ices)
 
 
-setwd('~/PhD DTU Aqua/(iv) Clean surveys')
-save(survey, file='ICESsurveys.RData')
+setwd('~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data')
+save(survey, file='ICESsurveysByc18062020.RData')
 
-setwd('~/PhD DTU Aqua/Additional Contributions/Matthew CTI project')
-save(survey, file='ICESsurveys.cleaned.format.RData')
-
-setwd('~/PhD DTU Aqua/(iv) Clean surveys/Clean and merge')
-save(survey, file='ICES.Surveys.31.10.2019.RData')
