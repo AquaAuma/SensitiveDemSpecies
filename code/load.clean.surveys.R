@@ -19,10 +19,30 @@ hh.evhoe <- read.csv('HH.EVHOE.csv')
 hh.fcgs <- read.csv('HH.FR-FCGS.csv')
 hh.igfs <- read.csv('HH.IE-IGFS.csv')
 hh.nigfs <- read.csv('HH.NIGFS.csv')
+pb.nigfs <- data.frame(sort(unique(hh.nigfs$StatRec)))
+pb.nigfs[,2] <- c('34E4','35E4','36E4','33E5','34E5','35E5','36E5','37E5','38E5','33E6','34E6','35E6','36E6',
+                  '37E6','38E6','35E7','36E7','37E7','38E7')
+names(pb.nigfs) <- c('StatRec','StatRec2')
+hh.nigfs <- left_join(hh.nigfs, pb.nigfs, by='StatRec')
+hh.nigfs$StatRec <- NULL
+setnames(hh.nigfs, old='StatRec2',new='StatRec')
 hh.pt <- read.csv('HH.PT-IBTS.csv')
 hh.rock <- read.csv('HH.ROCKALL.csv')
 hh.spa <- read.csv('HH.SP-ARSA.csv')
+pb.spa <- data.frame(sort(unique(hh.spa$StatRec)))
+pb.spa[,2] <- c('01E2','02E2','03E2','01E3','02E3','03E3')
+names(pb.spa) <- c('StatRec','StatRec2')
+hh.spa <- left_join(hh.spa, pb.spa, by='StatRec')
+hh.spa$StatRec <- NULL
+setnames(hh.spa, old='StatRec2',new='StatRec')
 hh.spn <- read.csv('HH.SP-NORTH.csv')
+pb.spn <- data.frame(sort(unique(hh.spn$StatRec)))
+pb.spn[,2] <- c('12E1','13E1','14E1','15E1','16E1','13E2','15E2','16E2','17E2','16E3','17E3','16E4',
+                '16E5','15E6','16E6','15E7','16E7','15E8','16E8','16E9')
+names(pb.spn) <- c('StatRec','StatRec2')
+hh.spn <- left_join(hh.spn, pb.spn, by='StatRec')
+hh.spn$StatRec <- NULL
+setnames(hh.spn, old='StatRec2',new='StatRec')
 hh.spp <- read.csv('HH.SP-PORC.csv')
 hh.swc <- read.csv('HH.SWC.IBTS.csv')
 
@@ -37,6 +57,12 @@ hh.sns$HydroStNo <- as.factor(as.character(hh.sns$HydroStNo))
 
 hh.bts <- read.csv('HH.BTS.csv')
 hh.bts8 <- read.csv('HH.BTSVIII.csv')
+pb.bts8 <- data.frame(sort(unique(hh.bts8$StatRec)))
+pb.bts8[,2] <- c('24E6','23E7','24E7','20E8','21E8','22E8','23E8','17E9','18E9','19E9','20E9','21E9')
+names(pb.bts8) <- c('StatRec','StatRec2')
+hh.bts8 <- left_join(hh.bts8, pb.bts8, by='StatRec')
+hh.bts8$StatRec <- NULL
+setnames(hh.bts8, old='StatRec2',new='StatRec')
 hh.bts8$StNo <- as.factor(as.character(hh.bts8$StNo))
 hh.bts8$Stratum <- as.factor(as.character(hh.bts8$Stratum))
 hh.bts8$Rigging <- as.factor(as.character(hh.bts8$Rigging))
