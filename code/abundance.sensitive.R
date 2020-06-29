@@ -1,6 +1,5 @@
 rm(list=ls())
 Sys.setenv(LANG = "en")
-memory.limit(size = 30000)
 
 ##########################################################################################
 ### Libraries
@@ -12,6 +11,8 @@ library(RColorBrewer)
 library(rgdal)
 library(tidyr)
 library(tidyverse)
+library(sjstats)
+library(msir)
 
 ##########################################################################################
 ### Load data
@@ -94,7 +95,7 @@ select50 <- rownames(select50)
 ##########################################################################################
 ### Try for one spp
 ##########################################################################################
-species <- 'Molva molva'
+species <- 'Raja brachyura'
 
 survey.spp <- survey %>% 
   filter(Species==species)
@@ -119,6 +120,7 @@ ices.keep <- sort(unique(realized.habitat$StatRec))
 # subset data with the right ICES squares --> in order to assign 0
 survey.spp <- survey %>% 
   filter(StatRec %in% ices.keep)
+length(unique(survey.spp$HaulID)) # remaining hauls
 
 
 ### 2. Add missing zeros
@@ -135,26 +137,10 @@ survey.spp <- left_join(survey.spp.0, survey.spp, by=c('HaulID'))
 length(unique(survey.spp$HaulID)) # remaining hauls
 
 
-### 3. remove hauls where abundance higher than 5 times the long-term average
-yearly.s.mean <- survey.spp %>% 
-  group_by(Year, Survey) %>% 
-  summarize_at(.vars=c('numcpue', 'numh', 'num'), .funs=function(x) mean(x, na.rm=T))
-long.av <- mean(yearly.s.mean$numh)
-survey.spp <- survey.spp %>% 
-  filter(numh <= 5*long.av)
-length(unique(survey.spp$HaulID)) # remaining hauls
-
-
-### 4. Calculate average abundance/per hour per Year/ICESsq/Survey
-# yearly average per ICES square
-yearly.sq.mean <- survey.spp %>% 
-  group_by(Year, StatRec) %>% 
-  summarize_at(.vars=c('numcpue', 'numh', 'num'), .funs=function(x) mean(x, na.rm=T))
-
-ggplot(yearly.sq.mean, aes(x=Year, y=numh)) + geom_point() + geom_smooth(method='loess') + scale_y_log10()
-
+### 3. Calculate average abundance/per hour per Year/ICESsq/Survey
 # yearly average per survey
 yearly.s.mean <- survey.spp %>% 
+  mutate(numh = numh/2) %>% # transform the /h into /30', matters when taking the average with 0
   group_by(Year, Survey) %>% 
   summarize_at(.vars=c('numcpue', 'numh', 'num'), .funs=function(x) mean(x, na.rm=T))
 
@@ -163,27 +149,85 @@ ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line
   theme_bw() + scale_color_manual(values=mycolors) +ylab('NUMCPUE') + ggtitle(species)
 
 
-### 5. Abundance relative to 2009-2018
-# relative to 2009-2018
+### 4. Divide by long-term average: the last 10 years
+# relative to last decade
+last.decade <- sort(unique(survey.spp$Year), decreasing=TRUE)[1:10]
 mean.recent <- yearly.s.mean %>% 
-  filter(Year>2008) %>% 
-  group_by(Survey) %>% 
+  filter(Year %in% last.decade) %>% 
+  group_by() %>% 
   summarize(mean.recent=mean(numh))
+mean.recent <- as.numeric(mean.recent)
 
-yearly.s.mean <- left_join(yearly.s.mean, mean.recent, by='Survey') %>% 
-  mutate(numh = numh/mean.recent,
+yearly.s.mean <- data.frame(yearly.s.mean)
+yearly.s.mean <- yearly.s.mean %>% 
+  #left_join(yearly.s.mean, mean.recent, by='Survey') %>% 
+  mutate(mean.recent = mean.recent,
+         numh = numh/mean.recent,
          num = num/mean.recent,
-         numcpue = numcpue/mean.recent)
+         numcpue = numcpue/mean.recent) %>% 
+  filter(numh<=5) # remove year with 5 times the long-term average
 
 mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
 ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-  theme_bw() + scale_color_manual(values=mycolors) +ylab('numcpue/average 2009+')
+  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
 
-yearly.means <- yearly.s.mean %>% 
-  filter(numh>0)
-ggplot(yearly.means, aes(x=Year, y=numh)) + geom_point() +
-  theme_bw() + ylab('numcpue/average 2009+') +
-  geom_smooth(method='loess', color='black')
+
+### 6. Get Loess per survey
+# fitted to logged positive catches of each species in each survey
+
+to.loess <- yearly.s.mean %>% 
+  filter(numh>0) %>% 
+  mutate(se.fit=NA,
+         index=NA)
+
+ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
+
+
+dat.index <- data.frame()
+surveys <- unique(to.loess$Survey)
+windows()
+par(mfrow=c(4,5))
+for(s in 1:length(surveys)){
+  data.s <- subset(to.loess, Survey==surveys[s])
+  if(nrow(data.s)>6){
+  loess.s <- loess(log(numh) ~ Year, data=data.s)
+  loess.p <- predict(loess.s, se=TRUE)
+  plot(log(numh) ~ Year, data=data.s, main=surveys[s], ylim=c(min(loess.p$fit-2*loess.p$se.fit), max(loess.p$fit+2*loess.p$se.fit)))
+  lines(loess.p$fit, x=sort(unique(data.s$Year)), col="black", lwd=2)
+  lines(loess.p$fit-2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
+  lines(loess.p$fit+2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
+  text(x=data.s$Year[3], y=min(log(data.s$numh))+0.9*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
+       labels=paste('Var: ', round(var(loess.p$fit), 2), sep=''),col="red")
+  text(x=data.s$Year[3], y=min(log(data.s$numh))+0.8*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
+       labels=paste('RSE: ', round((loess.s$s), 2), sep=''),col="blue")
+  
+  # Calculate cv of the residuals from the loess
+  loess.r <- resid(loess.s)
+  print(paste(surveys[s],': ',round(cv(loess.r),2), sep=''))
+  
+  plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(cv(loess.r),2), sep='')))
+  abline(h=0, lty=2)
+  
+  data.s$var <- rep(var(loess.p$fit), times=nrow(data.s))
+  dat.index <- rbind(dat.index, data.s)
+  rm(data.s, loess.p, loess.s, loess.r)
+  }
+}
+
+dat.index <- dat.index %>% 
+  mutate(index = numh*(1/var))
+# plot annual index per survey
+ggplot(dat.index, aes(x=Year, y=index, group=Survey, col=Survey)) + geom_line(lwd=2) +
+  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
+
+# plot annual index with loess smooth across surveys
+ggplot(dat.index, aes(x=Year, y=index)) + geom_point() +
+  theme_bw() + geom_smooth(method='loess', span=0.75, col='black') + xlim(1965,2019)
+
 
 
 
