@@ -62,7 +62,6 @@ num.obs <- survey %>%
   group_by(Year, Species) %>% 
   summarise(ICESsq=length(unique(StatRec)))
 
-#windows(60,50)
 ggplot(num.obs, aes(x=Year, y=Species, fill=ICESsq)) + geom_tile() + theme_bw() +
   scale_fill_distiller(palette = "RdYlBu")
 
@@ -72,7 +71,6 @@ num.surv <- survey %>%
   group_by(Year, SurvQ) %>% 
   summarise(ICESsq=length(unique(StatRec)))
 
-#windows(60,50)
 ggplot(num.surv, aes(x=Year, y=SurvQ, fill=ICESsq)) + geom_tile() + theme_bw() +
   scale_fill_distiller(palette = "RdYlBu")
 
@@ -90,11 +88,21 @@ select50 <- survey %>%
 select50$prop <- apply(select50, 1, FUN=function(x) sum(x)/ncol(select50))
 select50 <- subset(select50, prop>=0.5)
 select50 <- rownames(select50)
+print(select50) # list of selected spp
 
 
 ##########################################################################################
 ### Try for one spp
 ##########################################################################################
+
+Survey <- sort(unique(survey$Survey))
+mycolors <- colorRampPalette(brewer.pal(11, "RdYlBu"))(length(Survey))
+cols <- data.frame(cbind(Survey, mycolors))
+
+#pdf(file='results/Index.Std.pdf')
+#for (i in 1:length(select50)){
+#species <- select50[i]
+#print(species)
 species <- 'Raja brachyura'
 
 survey.spp <- survey %>% 
@@ -106,13 +114,13 @@ realized.habitat <- survey %>%
   group_by(StatRec) %>% 
   summarize(num=1)
 
-map_data_fortified <- fortify(surveyed.rect, region = "ICESNAME")
-map_data <- map_data_fortified %>% left_join(realized.habitat, by = c("id" = "StatRec"))
-world <- map_data("world")
-ggplot(data=map_data, aes(long, lat, group = group, fill = num)) +
-  geom_polygon(colour = 'grey',  size = 0.7) +
-  geom_polygon(data=world, aes(x=long, y=lat, group=group), fill='black', color="black") +
-  coord_quickmap(xlim=c(-25,30), ylim=c(35,62)) + theme_bw()
+#map_data_fortified <- fortify(surveyed.rect, region = "ICESNAME")
+#map_data <- map_data_fortified %>% left_join(realized.habitat, by = c("id" = "StatRec"))
+#world <- map_data("world")
+#ggplot(data=map_data, aes(long, lat, group = group, fill = num)) +
+#  geom_polygon(colour = 'grey',  size = 0.7) +
+#  geom_polygon(data=world, aes(x=long, y=lat, group=group), fill='black', color="black") +
+#  coord_quickmap(xlim=c(-25,30), ylim=c(35,62)) + theme_bw()
 
 # only keep ices squares where species is present
 ices.keep <- sort(unique(realized.habitat$StatRec))
@@ -164,22 +172,22 @@ yearly.s.mean <- yearly.s.mean %>%
   mutate(mean.recent = mean.recent,
          numh = numh/mean.recent,
          num = num/mean.recent,
-         numcpue = numcpue/mean.recent) %>% 
-  filter(numh<=5) # remove year with 5 times the long-term average
+         numcpue = numcpue/mean.recent) #%>% 
+  #filter(numh<=5) # remove year with 5 times the long-term average
 
-mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
-ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(survey$Survey)))
+print(ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
   theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
+  geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species))
 
+#}
+#dev.off()
 
 ### 6. Get Loess per survey
 # fitted to logged positive catches of each species in each survey
 
 to.loess <- yearly.s.mean %>% 
-  filter(numh>0) %>% 
-  mutate(se.fit=NA,
-         index=NA)
+  filter(numh>0)
 
 ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
   theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
@@ -188,6 +196,7 @@ ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=
 
 dat.index <- data.frame()
 surveys <- unique(to.loess$Survey)
+weights <- rep(NA, times=length(surveys))
 windows()
 par(mfrow=c(4,5))
 for(s in 1:length(surveys)){
@@ -211,18 +220,32 @@ for(s in 1:length(surveys)){
   plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(cv(loess.r),2), sep='')))
   abline(h=0, lty=2)
   
-  data.s$var <- rep(var(loess.p$fit), times=nrow(data.s))
+  data.s$weight <- rep(1/var(loess.p$fit), times=nrow(data.s))
   dat.index <- rbind(dat.index, data.s)
   rm(data.s, loess.p, loess.s, loess.r)
   }
 }
 
-dat.index <- dat.index %>% 
-  mutate(index = numh*(1/var))
-# plot annual index per survey
-ggplot(dat.index, aes(x=Year, y=index, group=Survey, col=Survey)) + geom_line(lwd=2) +
-  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
+
+try1 <- ggplot(dat.index, aes(x=Year, y=numh, size=weight, weight=weight)) + geom_point() +
+  theme_bw() + ylab('Abundance/long-term average') + geom_smooth(method='loess', col='black', span=0.75) +
+  theme(legend.position = 'none')
+
+try2 <- ggplot(dat.index, aes(x=Year, y=numh)) + geom_point() +
+  theme_bw() + ylab('Abundance/long-term average') + geom_smooth(aes(weight=weight), method='loess', col='black', span=0.75) +
+  theme(legend.position = 'none')
+
+egg::ggarrange(try1, try2, labels=c('',''), nrow=1)
+
+loess.p <- fitted(loess(numh~Year,weights=weight,span=0.75, data=dat.index))
+
+
+loess.spp <- loess(numh ~ Year, data=dat.index, span=0.75)
+loess.p <- predict(loess.spp, se=TRUE)
+plot(numh ~ Year, data=dat.index, ylim=c(min(loess.p$fit-2*loess.p$se.fit), max(loess.p$fit+2*loess.p$se.fit)))
+lines(loess.p$fit, x=sort(dat.index$Year), col="black", lwd=2)
+lines(loess.p$fit-2*loess.p$se.fit, x=sort(dat.index$Year), col="black", lty=2)
+lines(loess.p$fit+2*loess.p$se.fit, x=sort(dat.index$Year), col="black", lty=2)
 
 # plot annual index with loess smooth across surveys
 ggplot(dat.index, aes(x=Year, y=index)) + geom_point() +
