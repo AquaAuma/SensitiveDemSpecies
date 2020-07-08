@@ -99,11 +99,12 @@ Survey <- sort(unique(survey$Survey))
 mycolors <- colorRampPalette(brewer.pal(11, "RdYlBu"))(length(Survey))
 cols <- data.frame(cbind(Survey, mycolors))
 
-#pdf(file='results/Index.Std.pdf')
-#for (i in 1:length(select50)){
-#species <- select50[i]
-#print(species)
-species <- 'Raja brachyura'
+plot.loess='FALSE'
+pdf(file='results/Index.Std.after.loess.pdf')
+for (i in 1:length(select50)){
+species <- select50[i]
+print(species)
+#species <- 'Lepidorhombus whiffiagonis'
 
 survey.spp <- survey %>% 
   filter(Species==species)
@@ -152,9 +153,17 @@ yearly.s.mean <- survey.spp %>%
   group_by(Year, Survey) %>% 
   summarize_at(.vars=c('numcpue', 'numh', 'num'), .funs=function(x) mean(x, na.rm=T))
 
-mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
-ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-  theme_bw() + scale_color_manual(values=mycolors) +ylab('NUMCPUE') + ggtitle(species)
+mean.per.survey <- yearly.s.mean %>% # to remove surveys with only 0
+  group_by(Survey) %>% 
+  summarize(numh=mean(numh)) %>% 
+  filter(numh>0)
+
+yearly.s.mean <- yearly.s.mean %>% 
+  filter(Survey %in% mean.per.survey$Survey)
+
+#mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
+#ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+#  theme_bw() + scale_color_manual(values=mycolors) + ylab('NUMCPUE') + ggtitle(species)
 
 
 ### 4. Divide by long-term average: the last 10 years
@@ -162,26 +171,26 @@ ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line
 last.decade <- sort(unique(survey.spp$Year), decreasing=TRUE)[1:10]
 mean.recent <- yearly.s.mean %>% 
   filter(Year %in% last.decade) %>% 
-  group_by() %>% 
+  group_by(Survey) %>% 
   summarize(mean.recent=mean(numh))
-mean.recent <- as.numeric(mean.recent)
+mean.recent <- mean.recent %>% 
+  filter(mean.recent!=0)# sometimes, mean.recent is 0 for some surveys, remove the surveys with recent mean=0
 
 yearly.s.mean <- data.frame(yearly.s.mean)
-yearly.s.mean <- yearly.s.mean %>% 
-  #left_join(yearly.s.mean, mean.recent, by='Survey') %>% 
+yearly.s.mean <- yearly.s.mean %>%
+  filter(Survey %in% mean.recent$Survey) %>% 
+  left_join(mean.recent, by='Survey') %>% 
   mutate(mean.recent = mean.recent,
          numh = numh/mean.recent,
          num = num/mean.recent,
-         numcpue = numcpue/mean.recent) #%>% 
-  #filter(numh<=5) # remove year with 5 times the long-term average
+         numcpue = numcpue/mean.recent) %>% 
+  filter(numh<=5) # remove year with 5 times the long-term average
 
-mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(survey$Survey)))
-print(ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-  geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species))
+mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
+#ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+#  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+#  geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species)
 
-#}
-#dev.off()
 
 ### 6. Get Loess per survey
 # fitted to logged positive catches of each species in each survey
@@ -189,21 +198,23 @@ print(ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geo
 to.loess <- yearly.s.mean %>% 
   filter(numh>0)
 
-ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
+#ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+#  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+#  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
 
 
 dat.index <- data.frame()
 surveys <- unique(to.loess$Survey)
 weights <- rep(NA, times=length(surveys))
-windows()
-par(mfrow=c(4,5))
+comb.surveys <- c()
+#windows()
+#par(mfrow=c(5,5))
 for(s in 1:length(surveys)){
   data.s <- subset(to.loess, Survey==surveys[s])
   if(nrow(data.s)>6){
   loess.s <- loess(log(numh) ~ Year, data=data.s)
   loess.p <- predict(loess.s, se=TRUE)
+  if(plot.loess==TRUE){
   plot(log(numh) ~ Year, data=data.s, main=surveys[s], ylim=c(min(loess.p$fit-2*loess.p$se.fit), max(loess.p$fit+2*loess.p$se.fit)))
   lines(loess.p$fit, x=sort(unique(data.s$Year)), col="black", lwd=2)
   lines(loess.p$fit-2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
@@ -212,19 +223,36 @@ for(s in 1:length(surveys)){
        labels=paste('Var: ', round(var(loess.p$fit), 2), sep=''),col="red")
   text(x=data.s$Year[3], y=min(log(data.s$numh))+0.8*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
        labels=paste('RSE: ', round((loess.s$s), 2), sep=''),col="blue")
+  }
   
   # Calculate cv of the residuals from the loess
   loess.r <- resid(loess.s)
-  print(paste(surveys[s],': ',round(cv(loess.r),2), sep=''))
+  #print(paste(surveys[s],': ',round(sd(loess.r),2), sep=''))
   
-  plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(cv(loess.r),2), sep='')))
-  abline(h=0, lty=2)
+  #plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(sd(loess.r),2), sep='')))
+  #abline(h=0, lty=2)
   
-  data.s$weight <- rep(1/var(loess.p$fit), times=nrow(data.s))
+  # if the sd of the residuals is lower than 0.75, we keep the survey-species combination
+  if(sd(loess.r)<=0.9){comb.surveys[length(comb.surveys)+1] <- surveys[s]}
+  
+  data.s$weight <- rep(1/sd(loess.p$fit), times=nrow(data.s))
   dat.index <- rbind(dat.index, data.s)
   rm(data.s, loess.p, loess.s, loess.r)
   }
 }
+
+
+# plot indices per surveys after selecting combinations of spp-surveys to keep basedon loess
+yearly.s.mean <- yearly.s.mean %>% 
+  filter(Survey %in% comb.surveys)
+mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(comb.surveys))
+print(ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
+        theme_bw() + scale_color_manual(values=mycolors) + 
+        ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
+        geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species) + xlim(1965,2020) + ylim(0,6))
+
+}
+dev.off()
 
 
 try1 <- ggplot(dat.index, aes(x=Year, y=numh, size=weight, weight=weight)) + geom_point() +
