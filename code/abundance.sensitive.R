@@ -4,6 +4,7 @@ Sys.setenv(LANG = "en")
 ##########################################################################################
 ### Libraries
 ##########################################################################################
+
 library(dplyr)
 library(ggplot2)
 library(egg)
@@ -13,6 +14,15 @@ library(tidyr)
 library(tidyverse)
 library(sjstats)
 library(msir)
+
+
+##########################################################################################
+### Needed functions
+##########################################################################################
+
+# from https://gist.github.com/kylebgorman/6444612 
+source('code/autoloess.R')
+
 
 ##########################################################################################
 ### Load data
@@ -99,7 +109,10 @@ Survey <- sort(unique(survey$Survey))
 mycolors <- colorRampPalette(brewer.pal(11, "RdYlBu"))(length(Survey))
 cols <- data.frame(cbind(Survey, mycolors))
 
+### Choice to make
 plot.loess='FALSE'
+
+### Run to get the index
 pdf(file='results/Index.Std.after.loess.pdf')
 for (i in 1:length(select50)){
 species <- select50[i]
@@ -194,14 +207,8 @@ mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mea
 
 ### 6. Get Loess per survey
 # fitted to logged positive catches of each species in each survey
-
 to.loess <- yearly.s.mean %>% 
   filter(numh>0)
-
-#ggplot(to.loess, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-#  theme_bw() + scale_color_manual(values=mycolors) +ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-#  geom_hline(yintercept=1, lwd=1, lty=2, col='black')
-
 
 dat.index <- data.frame()
 surveys <- unique(to.loess$Survey)
@@ -210,46 +217,63 @@ comb.surveys <- c()
 #windows()
 #par(mfrow=c(5,5))
 for(s in 1:length(surveys)){
-  data.s <- subset(to.loess, Survey==surveys[s])
-  if(nrow(data.s)>6){
-  loess.s <- loess(log(numh) ~ Year, data=data.s)
-  loess.p <- predict(loess.s, se=TRUE)
-  if(plot.loess==TRUE){
-  plot(log(numh) ~ Year, data=data.s, main=surveys[s], ylim=c(min(loess.p$fit-2*loess.p$se.fit), max(loess.p$fit+2*loess.p$se.fit)))
-  lines(loess.p$fit, x=sort(unique(data.s$Year)), col="black", lwd=2)
-  lines(loess.p$fit-2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
-  lines(loess.p$fit+2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
-  text(x=data.s$Year[3], y=min(log(data.s$numh))+0.9*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
-       labels=paste('Var: ', round(var(loess.p$fit), 2), sep=''),col="red")
-  text(x=data.s$Year[3], y=min(log(data.s$numh))+0.8*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
-       labels=paste('RSE: ', round((loess.s$s), 2), sep=''),col="blue")
-  }
+#print(surveys[s])
+ # tryCatch({
+    data.s <- subset(to.loess, Survey==surveys[s])
+    if(nrow(data.s)>6){
+      # loess with whatever span, default is 0.75
+      loess.s <- loess(log(numh) ~ Year, data=data.s)
+      # auto-optimization, returning the best span value
+      span <- autoloess(loess.s)
+      loess.s <- loess(log(numh) ~ Year, data=data.s, span=span)
+      # if the optimized value is not good, we keep the default value at 0.75
+      if(is.infinite(loess.s$s)){span <- 0.75
+      loess.s <- loess(log(numh) ~ Year, data=data.s, span=span)}
+      #print(span)
+      # fit the loess with the right span
+      loess.p <- predict(loess.s, se=TRUE)
   
-  # Calculate cv of the residuals from the loess
-  loess.r <- resid(loess.s)
-  #print(paste(surveys[s],': ',round(sd(loess.r),2), sep=''))
+      if(plot.loess==TRUE){
+      plot(log(numh) ~ Year, data=data.s, main=surveys[s], ylim=c(min(loess.p$fit-2*loess.p$se.fit), max(loess.p$fit+2*loess.p$se.fit)))
+      lines(loess.p$fit, x=sort(unique(data.s$Year)), col="black", lwd=2)
+      lines(loess.p$fit-2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
+      lines(loess.p$fit+2*loess.p$se.fit, x=sort(unique(data.s$Year)), col="black", lty=2)
+      text(x=data.s$Year[3], y=min(log(data.s$numh))+0.9*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
+           labels=paste('Var: ', round(var(loess.p$fit), 2), sep=''),col="red")
+      text(x=data.s$Year[3], y=min(log(data.s$numh))+0.8*(range(log(data.s$numh))[2]-range(log(data.s$numh))[1]),
+           labels=paste('RSE: ', round((loess.s$s), 2), sep=''),col="blue")
+    }
   
-  #plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(sd(loess.r),2), sep='')))
-  #abline(h=0, lty=2)
-  
-  # if the sd of the residuals is lower than 0.75, we keep the survey-species combination
-  if(sd(loess.r)<=0.9){comb.surveys[length(comb.surveys)+1] <- surveys[s]}
-  
-  data.s$weight <- rep(1/sd(loess.p$fit), times=nrow(data.s))
-  dat.index <- rbind(dat.index, data.s)
-  rm(data.s, loess.p, loess.s, loess.r)
-  }
+    # Calculate cv of the residuals from the loess
+    loess.r <- resid(loess.s)
+    #plot(loess.r ~ data.s$Year, main=(paste('CV resid: ', round(sd(loess.r),2), sep='')))
+    #abline(h=0, lty=2)
+    
+    # if the sd of the residuals is lower than 0.75, we keep the survey-species combination
+    print(sd(loess.r))
+    if(sd(loess.r)<=0.9){comb.surveys[length(comb.surveys)+1] <- surveys[s]}
+    
+    data.s$weight <- rep(1/sd(loess.p$fit), times=nrow(data.s))
+    dat.index <- rbind(dat.index, data.s)
+    rm(data.s, loess.p, loess.s, loess.r)
+    }
+ # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
 }
 
 
 # plot indices per surveys after selecting combinations of spp-surveys to keep basedon loess
 yearly.s.mean <- yearly.s.mean %>% 
   filter(Survey %in% comb.surveys)
-mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(comb.surveys))
+
+# keep same survey legend colors each time
+mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(survey$Survey)))
+dat.col <- data.frame(cbind(Survey, mycolors)) %>% 
+  filter(Survey %in% comb.surveys)
 print(ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
-        theme_bw() + scale_color_manual(values=mycolors) + 
+        theme_bw() + scale_color_manual(name=dat.col$Survey, values=as.character(dat.col$mycolors)) + 
         ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-        geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species) + xlim(1965,2020) + ylim(0,6))
+        geom_hline(yintercept=1, lwd=1, lty=2, col='black') + ggtitle(species) + xlim(1960,2020) + ylim(0,6)) +
+        theme(text=element_text(size=22))
 
 }
 dev.off()

@@ -1,152 +1,74 @@
 Sys.setenv(LANG = "en")
 rm(list=ls())
 
-### Libraries
-#------------
+##########################################################################################
+#### LOAD LIBRARIES
+##########################################################################################
 library(data.table)
 library(dplyr)
-
+library(icesDatras)
 re.estimate.SA <- 'FALSE'
+
 
 ##########################################################################################
 #### LOAD FILES
 ##########################################################################################
-# Haul info
-setwd('E:/DATA/ICES Surveys/exchange.data/HH')
-hh.ns <- read.csv('HH.NS-IBTS.csv')
-hh.baltic <- read.csv('HH.BITS.csv')
-hh.evhoe <- read.csv('HH.EVHOE.csv')
-hh.fcgs <- read.csv('HH.FR-FCGS.csv')
-hh.igfs <- read.csv('HH.IE-IGFS.csv')
-hh.nigfs <- read.csv('HH.NIGFS.csv')
-pb.nigfs <- data.frame(sort(unique(hh.nigfs$StatRec)))
-pb.nigfs[,2] <- c('34E4','35E4','36E4','33E5','34E5','35E5','36E5','37E5','38E5','33E6','34E6','35E6','36E6',
-                  '37E6','38E6','35E7','36E7','37E7','38E7')
-names(pb.nigfs) <- c('StatRec','StatRec2')
-hh.nigfs <- left_join(hh.nigfs, pb.nigfs, by='StatRec')
-hh.nigfs$StatRec <- NULL
-setnames(hh.nigfs, old='StatRec2',new='StatRec')
-hh.pt <- read.csv('HH.PT-IBTS.csv')
-hh.rock <- read.csv('HH.ROCKALL.csv')
-hh.spa <- read.csv('HH.SP-ARSA.csv')
-pb.spa <- data.frame(sort(unique(hh.spa$StatRec)))
-pb.spa[,2] <- c('01E2','02E2','03E2','01E3','02E3','03E3')
-names(pb.spa) <- c('StatRec','StatRec2')
-hh.spa <- left_join(hh.spa, pb.spa, by='StatRec')
-hh.spa$StatRec <- NULL
-setnames(hh.spa, old='StatRec2',new='StatRec')
-hh.spn <- read.csv('HH.SP-NORTH.csv')
-pb.spn <- data.frame(sort(unique(hh.spn$StatRec)))
-pb.spn[,2] <- c('12E1','13E1','14E1','15E1','16E1','13E2','15E2','16E2','17E2','16E3','17E3','16E4',
-                '16E5','15E6','16E6','15E7','16E7','15E8','16E8','16E9')
-names(pb.spn) <- c('StatRec','StatRec2')
-hh.spn <- left_join(hh.spn, pb.spn, by='StatRec')
-hh.spn$StatRec <- NULL
-setnames(hh.spn, old='StatRec2',new='StatRec')
-hh.spp <- read.csv('HH.SP-PORC.csv')
-hh.swc <- read.csv('HH.SWC.IBTS.csv')
+last.year <- 2019
 
-# new surveys to homogeneize with old ones
-hh.sns <- read.csv('HH.SNS.csv') # a part of HL is in HH, and I removed it
-hh.sns <- hh.sns %>% 
-  filter(RecordType=='HH')
-hh.sns$StNo <- as.factor(as.character(hh.sns$StNo))
-hh.sns$Stratum <- as.factor(as.character(hh.sns$Stratum))
-hh.sns$Rigging <- as.factor(as.character(hh.sns$Rigging))
-hh.sns$HydroStNo <- as.factor(as.character(hh.sns$HydroStNo))
+# Haul info from Datras
+hh.ns <- getDATRAS(record='HH', survey='NS-IBTS', years=c(1967:last.year), quarters=c(1,3))
+hh.baltic <- getDATRAS(record='HH', survey='BITS', years=c(1991:last.year), quarters=c(1,4))
+hh.evhoe <- getDATRAS(record='HH', survey='EVHOE', years=c(1997:last.year), quarters=4)
+hh.cgfs <- getDATRAS(record='HH', survey='FR-CGFS', years=c(1998:last.year), quarters=4)
+hh.igfs <- getDATRAS(record='HH', survey='IE-IGFS', years=c(2003:last.year), quarters=4)
+hh.nigfs <- getDATRAS(record='HH', survey='NIGFS', years=c(2005:last.year), quarters=c(1:4))
+hh.pt <- getDATRAS(record='HH', survey='PT-IBTS', years=c(2002:last.year), quarters=c(3:4))
+hh.rock <- getDATRAS(record='HH', survey='ROCKALL', years=c(1999:2009), quarters=3)
+hh.scorock <- getDATRAS(record='HH', survey='SCOROC', years=c(2011:last.year), quarters=3)
+hh.spa <- getDATRAS(record='HH', survey='SP-ARSA', years=c(1996:last.year), quarters=c(1:4))
+hh.spn <- getDATRAS(record='HH', survey='SP-NORTH', years=c(1990:last.year), quarters=c(3:4))
+hh.spp <- getDATRAS(record='HH', survey='SP-PORC', years=c(2001:last.year), quarters=c(3:4))
+hh.sns <- getDATRAS(record='HH', survey='SNS', years=c(2002:last.year), quarters=c(3:4))
+hh.swc <- getDATRAS(record='HH', survey='SWC-IBTS', years=c(1985:2010), quarters=c(1:4))
+hh.scowcgfs <- getDATRAS(record='HH', survey='SCOWCGFS', years=c(2011:last.year), quarters=c(1:4))
+hh.bts <- getDATRAS(record='HH', survey='BTS', years=c(1985:last.year), quarters=c(1:4))
+hh.bts8 <- getDATRAS(record='HH', survey='BTS-VIII', years=c(2011:last.year), quarters=4)
+hh.dyfs <- getDATRAS(record='HH', survey='DYFS', years=c(2002:last.year), quarters=c(3,4))
 
-hh.bts <- read.csv('HH.BTS.csv')
-hh.bts8 <- read.csv('HH.BTSVIII.csv')
-pb.bts8 <- data.frame(sort(unique(hh.bts8$StatRec)))
-pb.bts8[,2] <- c('24E6','23E7','24E7','20E8','21E8','22E8','23E8','17E9','18E9','19E9','20E9','21E9')
-names(pb.bts8) <- c('StatRec','StatRec2')
-hh.bts8 <- left_join(hh.bts8, pb.bts8, by='StatRec')
-hh.bts8$StatRec <- NULL
-setnames(hh.bts8, old='StatRec2',new='StatRec')
-hh.bts8$StNo <- as.factor(as.character(hh.bts8$StNo))
-hh.bts8$Stratum <- as.factor(as.character(hh.bts8$Stratum))
-hh.bts8$Rigging <- as.factor(as.character(hh.bts8$Rigging))
-hh.bts8$HydroStNo <- as.factor(as.character(hh.bts8$HydroStNo))
-hh.bts8$StatRec <- as.factor(as.character(hh.bts8$StatRec))
+hh <- rbind(hh.ns, hh.baltic, hh.evhoe, hh.cgfs, hh.igfs, hh.nigfs, hh.pt, hh.rock, hh.scorock, hh.spa, 
+            hh.spn, hh.spp, hh.sns, hh.swc, hh.scowcgfs, hh.bts, hh.bts8, hh.dyfs)
 
-hh.dyfs <- read.csv('HH.DYFS.csv')
-identical(colnames(hh.sns), colnames(hh.dyfs))
-hh.new1 <- rbind(hh.dyfs, hh.sns)
-identical(colnames(hh.bts), colnames(hh.bts8))
-hh.new2 <- rbind(hh.bts, hh.bts8)
-hh.new1 <- hh.new1 %>% 
-  select(colnames(hh.ns))
+# Length info from DATRAS
+hl.ns <- getDATRAS(record='HL', survey='NS-IBTS', years=c(1967:last.year), quarters=c(1,3))
+hl.baltic <- getDATRAS(record='HL', survey='BITS', years=c(1991:last.year), quarters=c(1,4))
+hl.evhoe <- getDATRAS(record='HL', survey='EVHOE', years=c(1997:last.year), quarters=4)
+hl.cgfs <- getDATRAS(record='HL', survey='FR-CGFS', years=c(1998:last.year), quarters=4)
+hl.igfs <- getDATRAS(record='HL', survey='IE-IGFS', years=c(2003:last.year), quarters=4)
+hl.nigfs <- getDATRAS(record='HL', survey='NIGFS', years=c(2005:last.year), quarters=c(1:4))
+hl.pt <- getDATRAS(record='HL', survey='PT-IBTS', years=c(2002:last.year), quarters=c(3:4))
+hl.rock <- getDATRAS(record='HL', survey='ROCKALL', years=c(1999:2009), quarters=3)
+hl.scorock <- getDATRAS(record='HL', survey='SCOROC', years=c(2011:last.year), quarters=3)
+hl.spa <- getDATRAS(record='HL', survey='SP-ARSA', years=c(1996:last.year), quarters=c(1:4))
+hl.spn <- getDATRAS(record='HL', survey='SP-NORTH', years=c(1990:2012), quarters=c(3:4))
+hl.spn2 <- getDATRAS(record='HL', survey='SP-NORTH', years=c(2014:last.year), quarters=c(3:4))
+# there is a problem with SPNorth for year 2013, so did not load the data for that year
+hl.spn <- rbind(hl.spn, hl.spn2)
+hl.spp <- getDATRAS(record='HL', survey='SP-PORC', years=c(2001:last.year), quarters=c(3:4))
+hl.sns <- getDATRAS(record='HL', survey='SNS', years=c(2002:last.year), quarters=c(3:4))
+hl.swc <- getDATRAS(record='HL', survey='SWC-IBTS', years=c(1985:2010), quarters=c(1:4))
+hl.scowcgfs <- getDATRAS(record='HL', survey='SCOWCGFS', years=c(2011:last.year), quarters=c(1:4))
+hl.bts <- getDATRAS(record='HL', survey='BTS', years=c(1985:last.year), quarters=c(1:4))
+hl.bts8 <- getDATRAS(record='HL', survey='BTS-VIII', years=c(2011:last.year), quarters=4)
+hl.dyfs <- getDATRAS(record='HL', survey='DYFS', years=c(2002:last.year), quarters=c(3,4))
 
-identical(colnames(hh.new1), colnames(hh.ns))
-identical(colnames(hh.new2), colnames(hh.ns))
-hh.new <- rbind(hh.new1, hh.new2)
+hl <- rbind(hl.ns, hl.baltic, hl.evhoe, hl.cgfs, hl.igfs, hl.nigfs, hl.pt, hl.rock, hl.scorock, hl.spa, 
+            hl.spn, hl.spp, hl.sns, hl.swc, hl.scowcgfs, hl.bts, hl.bts8, hl.dyfs)
 
-# Length info
-setwd('E:/DATA/ICES Surveys/exchange.data/HL')
-hl.ns1 <- read.csv('HL.NS-IBTS-1990-2000.csv')
-hl.ns2 <- read.csv('HL.NS-IBTS-2001-2010.csv')
-hl.ns3 <- read.csv('HL.NS-IBTS-2011-2017.csv')
-hl.ns4 <- read.csv('HL.NS-IBTS-1965-1989.csv')
-hl.ns <- rbind(hl.ns1, hl.ns2, hl.ns3, hl.ns4)
+rm(hl.ns, hl.baltic, hl.evhoe, hl.cgfs, hl.igfs, hl.nigfs, hl.pt, hl.rock, hl.scorock, hl.spa, 
+   hl.spn, hl.spn2, hl.spp, hl.sns, hl.swc, hl.scowcgfs, hl.bts, hl.bts8, hl.dyfs, 
+   hh.ns, hh.baltic, hh.evhoe, hh.cgfs, hh.igfs, hh.nigfs, hh.pt, hh.rock, hh.scorock, hh.spa, 
+   hh.spn, hh.spp, hh.sns, hh.swc, hh.scowcgfs, hh.bts, hh.bts8, hh.dyfs)
 
-hl.baltic1 <- read.csv('HL.BITS-1991-2000.csv')
-hl.baltic2 <- read.csv('HL.BITS-2001-2010.csv')
-hl.baltic3 <- read.csv('HL.BITS-2011-2017.csv')
-hl.baltic <- rbind(hl.baltic1, hl.baltic2, hl.baltic3)
-
-hl.evhoe1 <- read.csv('HL.EVHOE-1997-2007.csv')
-hl.evhoe2 <- read.csv('HL.EVHOE-2008-2017.csv')
-hl.evhoe <- rbind(hl.evhoe1, hl.evhoe2)
-
-hl.cgfs <- read.csv('HL.FR-CGFS.csv')
-hl.igfs <- read.csv('HL.IE-IGFS.csv')
-hl.nigfs <- read.csv('HL.NIGFS.csv')
-hl.pt <- read.csv('HL.PT-IBTS.csv')
-hl.rock <- read.csv('HL.ROCK.csv')
-hl.spa <- read.csv('HL.SP-ARSA.csv')
-hl.spn <- read.csv('HL.SP-NORTH.csv')
-hl.spp <- read.csv('HL.SP-PORC.csv')
-hl.swc <- read.csv('HL.SWC-IBTS.csv')
-
-hl.bts <- read.csv('HL.BTS.csv') 
-hl.bts8 <- read.csv('HL.BTSVIII.csv') 
-hl.dyfs <- read.csv('HL.DYFS.csv')
-hl.sns <- read.csv('HL.SNS.csv')
-hl.new1 <- rbind(hl.bts, hl.bts8)
-hl.new1$ScientificName_WoRMS <- NULL
-hl.sns$StNo <- as.factor(as.character(hl.sns$StNo))
-hl.new2 <- rbind(hl.dyfs, hl.sns)
-hl.new2$ScientificName_WoRMS <- hl.new2$DevStage <- NULL
-identical(colnames(hl.new2), colnames(hl.new1))
-hl.new <- rbind(hl.new1, hl.new2)
-hl.new <- hl.new %>% 
-  select(colnames(hl.baltic))
-identical(colnames(hl.new), colnames(hl.baltic))
-
-hh.nigfs$StatRec <- as.factor(as.character(hh.nigfs$StatRec))
-hh.nigfs$HydroStNo <- as.factor(as.character(hh.nigfs$HydroStNo))
-hh.swc$StNo <- as.factor(as.character(hh.swc$StNo))
-hh.pt$StNo <- as.factor(as.character(hh.pt$StNo))
-hh.spa$StNo <- as.factor(as.character(hh.spa$StNo))
-hh.spa$HydroStNo <- as.factor(as.character(hh.spa$HydroStNo))
-hh.spa$Rigging <- as.factor(as.character(hh.spa$Rigging))
-hh.spa$StatRec <- as.factor(as.character(hh.spa$StatRec))
-hh.spp$StatRec <- as.factor(as.character(hh.spp$StatRec))
-hh.spn$StatRec <- as.factor(as.character(hh.spn$StatRec))
-hh.spp$StNo <- as.factor(as.character(hh.spp$StNo))
-hh.spn$StNo <- as.factor(as.character(hh.spn$StNo))
-hl.swc$StNo <- as.factor(as.character(hl.swc$StNo))
-hl.pt$StNo <- as.factor(as.character(hl.pt$StNo))
-
-hh <- rbind(hh.ns, hh.evhoe, hh.fcgs, hh.igfs, hh.nigfs, hh.swc, hh.rock, hh.pt, hh.baltic, hh.spa, hh.spp, hh.spn, hh.new)#, hh.spa, hh.spp, hh.spn)
-hl <- rbind(hl.ns, hl.evhoe, hl.cgfs, hl.igfs, hl.nigfs, hl.swc, hl.rock, hl.pt, hl.baltic, hl.spa, hl.spp, hl.spn, hl.new)# hl.spa, hl.spp, hl.spn)
-
-rm(hh.ns, hh.evhoe, hh.fcgs, hh.igfs, hh.nigfs, hh.swc, hh.rock, hh.pt, hh.baltic)
-rm(hl.ns, hl.evhoe, hl.cgfs, hl.igfs, hl.nigfs, hl.swc, hl.rock, hl.pt, hl.baltic)
-rm(hl.baltic1, hl.baltic2, hl.baltic3, hl.evhoe1, hl.evhoe2, hl.ns1, hl.ns2, hl.ns3, hl.ns4)
-rm(hh.spa, hh.spn, hh.spp, hl.spa, hl.spn, hl.spp)
-rm(hh.bts, hh.bts8, hh.dyfs, hh.new, hh.new1, hh.new2, hh.sns)
-rm(hl.bts, hl.bts8, hl.dyfs, hl.new1, hl.new2, hl.sns, hl.new)
 
 ##########################################################################################
 #### CREATE A UNIQUE HAUL ID
@@ -155,7 +77,6 @@ rm(hl.bts, hl.bts8, hl.dyfs, hl.new1, hl.new2, hl.sns, hl.new)
 
 hl$HaulID <- paste(hl$Survey, hl$Year,hl$Quarter, hl$Country, hl$Ship, hl$Gear, hl$StNo, hl$HaulNo)
 hl$SweepLngt <- hl$SpecCodeType <- hl$SpecCode <- hl$Sex <- hl$DateofCalculation <- hl$RecordType <- NULL
-
 hh$HaulID <- paste(hh$Survey, hh$Year,hh$Quarter, hh$Country, hh$Ship, hh$Gear, hh$StNo, hh$HaulNo)
 
 # Is the HaulID unique?
@@ -175,9 +96,16 @@ hh$HydroStNo <- hh$HaulLat <- hh$SweepLngt <- hh$HaulLong <- hh$DayNight <- hh$S
 
 # Only keep hauls where there is the length composition. 60162 hauls in hh and 60135 in hl
 hh <- subset(hh, hh$HaulID %in% hl$HaulID)
-identical(sort(unique(hh$HaulID)),sort(unique(hl$HaulID)))
+hl <- subset(hl, hl$HaulID %in% hh$HaulID)
+
+if(identical(sort(unique(hh$HaulID)),sort(unique(hl$HaulID)))){
+  save(hh, file='HH.09.07.2020.RData')
+  save(hl, file='HL.09.07.2020.RData')
+}
 
 
+# problem with NS-IBTS, Sp North, more HL hauls than HH hauls
+# 9 hauls in NS-IBTS in 1985
 
 ##########################################################################################
 #### MERGE HH and HL FILES
