@@ -30,15 +30,10 @@ source('code/autoloess.R')
 ### Load sensi. species index
 sensi <- read.csv('results/Sensi.csv')
 sensi <- sensi %>% 
-  mutate(Species = as.character(Species),
-         Species = if_else(Species=='Dipturus batis-complex', 'Dipturus spp', Species),
-         Species = if_else(Species=='Mustelus mustelus/asterias', 'Mustelus spp', Species)
-  )
+  mutate(Species = recode(Species, 'Dipturus batis-complex'='Dipturus spp','Mustelus mustelus/asterias'='Mustelus spp'))
 
 ### Load species abundances across surveys
-load('data/ICESsurveysByc18062020.RData')
-survey <- survey %>% 
-  mutate(Species = if_else(Species %in% c('Mustelus','Mustelus asterias','Mustelus mustelus'),'Mustelus spp',Species))
+load('data/ICESsurveysByc10072020.RData')
 
 ### Load ICES rectangles shapefiles
 rect <- readOGR(dsn = "data/ICES_rectangles/ICES_Statistical_Rectangles_Eco.shp",layer="ICES_Statistical_Rectangles_Eco")
@@ -58,10 +53,11 @@ length(sensi.spp) # as in Rindorf et al., 2020, 59 species are found sensitive a
 
 # Select snesitive spp in surveys
 survey <- survey %>% 
-  mutate(Species = as.character(Species)) %>% 
   filter(survey$Species %in% sensi.spp)
 length(unique(survey$Species))
 
+# Check that all sensitive spp are in the survey data frame
+setdiff(sensi.spp, unique(survey$Species)) # is 0, ok!
 
 ##########################################################################################
 ### Select species with 50% observed in time-series
@@ -217,8 +213,6 @@ comb.surveys <- c()
 #windows()
 #par(mfrow=c(5,5))
 for(s in 1:length(surveys)){
-#print(surveys[s])
- # tryCatch({
     data.s <- subset(to.loess, Survey==surveys[s])
     if(nrow(data.s)>6){
       # loess with whatever span, default is 0.75
@@ -257,7 +251,6 @@ for(s in 1:length(surveys)){
     dat.index <- rbind(dat.index, data.s)
     rm(data.s, loess.p, loess.s, loess.r)
     }
- # }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
 }
 
 
