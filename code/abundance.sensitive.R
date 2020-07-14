@@ -104,7 +104,7 @@ print(select50) # list of selected spp
 
 
 ##########################################################################################
-### Build indices for all species
+### Build abundance indices for all species
 ##########################################################################################
 
 Survey <- sort(unique(survey$Survey))
@@ -116,7 +116,7 @@ plot.loess='FALSE'
 last.year <- 2019
 
 ### Run to get the index
-pdf(file='results/Map.Index.Loess.spp.pdf')
+pdf(file='results/Abundance.Index.spp.pdf')
 for (i in 1:length(select50)){
 species <- select50[i]
 print(species)
