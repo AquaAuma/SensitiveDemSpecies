@@ -1,3 +1,9 @@
+#############################################################
+#### Code to download and clean survey data from DATRAS
+#### Adapted to build abundance indices of sensitive and by-caught species
+#### Related paper: Are fish sensitive to trawling recovering in the Northeast Atlantic?
+#### Coding: Aurore Maureaud, July 2020
+#############################################################
 Sys.setenv(LANG = "en")
 rm(list=ls())
 
@@ -76,8 +82,6 @@ rm(hl.ns, hl.baltic, hl.evhoe, hl.cgfs, hl.igfs, hl.nigfs, hl.pt, hl.rock, hl.sc
 ##########################################################################################
 #### CREATE A UNIQUE HAUL ID
 ##########################################################################################
-
-
 hl$HaulID <- paste(hl$Survey, hl$Year,hl$Quarter, hl$Country, hl$Ship, hl$Gear, hl$StNo, hl$HaulNo)
 hl$SweepLngt <- hl$SpecCodeType <- hl$SpecCode <- hl$Sex <- hl$DateofCalculation <- hl$RecordType <- NULL
 hh$HaulID <- paste(hh$Survey, hh$Year,hh$Quarter, hh$Country, hh$Ship, hh$Gear, hh$StNo, hh$HaulNo)
@@ -101,15 +105,12 @@ hh$HydroStNo <- hh$HaulLat <- hh$SweepLngt <- hh$HaulLong <- hh$DayNight <- hh$S
 hh <- subset(hh, hh$HaulID %in% hl$HaulID)
 hl <- subset(hl, hl$HaulID %in% hh$HaulID)
 
-if(identical(sort(unique(hh$HaulID)),sort(unique(hl$HaulID)))){
-  save(hh, file='~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data/HH.09.07.2020.RData')
-  save(hl, file='~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data/HL.09.07.2020.RData')
-}
-load('data/HH.09.07.2020.RData')
-load('data/HL.09.07.2020.RData')
-
-# problem with NS-IBTS, Sp North, more HL hauls than HH hauls
-# 9 hauls in NS-IBTS in 1985
+#if(identical(sort(unique(hh$HaulID)),sort(unique(hl$HaulID)))){
+#  save(hh, file='~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data/HH.09.07.2020.RData')
+#  save(hl, file='~/RA_DTUAqua/SensitiveFish/SensitiveDemSpecies/data/HL.09.07.2020.RData')
+#}
+#load('data/HH.09.07.2020.RData')
+#load('data/HL.09.07.2020.RData')
 
 ##########################################################################################
 #### MERGE HH and HL FILES
@@ -166,7 +167,6 @@ survey <- survey %>%
 ##########################################################################################
 #### GET THE SWEPT AREA
 ##########################################################################################
-
 survey <- survey %>% 
   mutate(WingSpread = replace(WingSpread, WingSpread==-9, NA),
          DoorSpread = replace(DoorSpread, DoorSpread==-9, NA),
@@ -195,14 +195,12 @@ survey <- survey %>%
   mutate(numh = if_else(Gear=='BT6' & Survey=='DYFS', numh*3/6, numh)) %>% 
   mutate(numh = if_else(Gear=='BT7', numh*4/7, numh)) %>% 
   mutate(numh = if_else(Gear=='BT8', numh*4/8, numh)) %>% 
+  #there have been minor changes to the gear in these surveys, it should not affect sensitives
   mutate(Survey = if_else(Survey=='SCOWCGFS', 'SWC-IBTS', Survey)) %>% 
-  #mutate(Survey = if_else(Survey=='SCOWGFS','SWC-IBTS',Survey)) %>%
   mutate(Survey = if_else(Survey=='SCOROC','ROCKALL',Survey)) %>% 
+  #two different gear sizes are used in the Baltic - they cannot converted reliably for sensitives, so they are treated as separate surveys in my analysis.
   mutate(Survey = if_else(Survey=='BITS' & Gear=='TVS', 'BITSS', Survey)) %>% 
   mutate(Survey = if_else(Survey=='BITS' & Gear=='TVL', 'BITSL', Survey)) %>% 
-#two different gear sizes are used in the Baltic - they cannot converted reliably for sensitives, so they are treated as separate surveys in my analysis.
-#         ) %>% 
-#there have been minor changes to the gear in these surveys, it should not affect sensitives
   group_by(Survey, HaulID, StatRec, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST, AphiaID, BycSpecRecCode) %>%
   summarize_at(.vars=c('numcpue', 'wtcpue', 'numh', 'wgth', 'num', 'wgt'), .funs=function(x) sum(x, na.rm=T)) %>%
   select(Survey, HaulID, StatRec, Year, Month, Quarter, Season, ShootLat, ShootLong, HaulDur, Area.swept, Gear, Depth, SBT, SST,
@@ -230,12 +228,8 @@ df_test$authority <- df_test$status <- df_test$taxonRankID <- df_test$isBrackish
 #check if it identified everything
 dim(subset(df_test, is.na(df_test$phylum))) # ok
 
-
 # In the class column, we only keep the 5 groups we want. 
 df_test <- subset(df_test, class %in% c("Elasmobranchii","Actinopterygii","Holocephali","Myxini","Petromyzonti")) 
-
-# Only keep species rank
-#df_test <- subset(df_test, df_test$rank=='Species')
 
 keep_sp <- data.frame(df_test) # subsetting
 keep_sp <- data.frame(unlist(keep_sp$valid_name)) #unlisting
@@ -257,7 +251,7 @@ survey <- survey %>%
 survey$AphiaID <- NULL
 
 
-### Code to integrate from Anna on species bycatch corrections                                                         'Melanogrammus aeglefinus','Merlangius merlangus','Trisopterus esmarkii')))
+### Code to integrate from Anna on species bycatch corrections
 survey <- data.frame(survey)
 survey <- survey %>%
   mutate(Species = recode(Species, 'Synaphobranchus kaupii'='Synaphobranchus kaupi',

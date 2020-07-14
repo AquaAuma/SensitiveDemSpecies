@@ -1,19 +1,24 @@
 #############################################################
 #### Model code for estimating species sensitivity to fishing
+#### 'GISLASIM'
 #### Developed with Anna Rindorf and Henrik Gislason
 #### Paper: Are fish sensitive to trawling recovering in the Northeast Atlantic?
-#### Coding: Aurore Maureaud
+#### Coding: Aurore Maureaud, July 2020
 #############################################################
 
+rm(list=ls())
 Sys.setenv(LANG = "en")
 
-# Libraries
+##########################################################################################
+### Libraries
+##########################################################################################
 library(readr)
 library(readxl)
 
 
-# Exploitation effiency per group
-#################################
+##########################################################################################
+### Exploitation effiency per group
+##########################################################################################
 EE <- read_excel("data/Walker_catchability.xlsx")
 EE$max <- apply(EE[,2:8], 1, FUN=max)
 EE$eff1 <- EE$eff2 <- EE$eff3 <- EE$eff4 <- EE$eff5 <- EE$eff6 <- EE$eff7 <- NA
@@ -28,8 +33,9 @@ EE$eff7 <- EE$G7/EE$max
 EE[1:2,10:16] <- 0
 
 
-# Parameters/traits collected or re-estimated
-#############################################
+##########################################################################################
+### Parameters/traits collected or re-estimated
+##########################################################################################
 
 # Load trait data
 trait <- read_excel("data/Traits.xlsx")
@@ -51,9 +57,9 @@ trait$Fsensi <- NA
 #7	lumpiform
 
 
-###############################
+##########################################################################################
 #### Set up trait relationships
-###############################
+##########################################################################################
 # Model to estimate K from Linf
 plot(K~Linf, data=trait, log='xy')
 lmK <- lm(log(K, base=10)~log(Linf, base=10), data=trait)
@@ -73,9 +79,9 @@ plot(Lmet ~ Linf, data=trait.vivi)
 lmLmet.vivi <- lm(Lmet ~ Linf, data=trait.vivi)
 
 
-##########################
-#### Get Sensi for all spp
-##########################
+##########################################################################################
+### Get Sensitivity to fishing for all spp
+##########################################################################################
 
 for(s in 1:nrow(trait)){
 
@@ -93,8 +99,8 @@ explo <- as.numeric(as.vector(trait[s,7]))
 repro <- trait$Taxonomy[s]
 
 
-# Estimation of missing traits
-##############################
+### Estimation of missing traits
+##########################################################################################
 if (is.na(linf)){linf <- 10^(0.044+0.9841*log(lmax, base=10))}
 # equation from Froese, R. and Binohlan, C., 2000. Journal of fish biology, 56(4), pp.758-773.
 
@@ -112,7 +118,7 @@ if (is.na(lmet)){
 
 
 # Simulations
-#############
+##########################################################################################
 sensi <- 99
 f.factor=-0.01
 fishSensi <- data.frame(matrix(nrow=2001, ncol=2))
@@ -214,7 +220,7 @@ for(i in 2:nrow(sim)){
 
 
 # Get species sensitivity
-#########################
+##########################################################################################
 totSSB <- sum(sim$SSB)
 SSBoverR <- totSSB/sim$N[1]
 N1overSSB <- sum(sim$N1)*1000/totSSB

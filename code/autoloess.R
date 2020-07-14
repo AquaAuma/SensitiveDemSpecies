@@ -1,5 +1,5 @@
 # autoloess.R: compute loess metaparameters automatically
-# Kyle Gorman <gormanky@ohsu.edu>
+# adapted from Kyle Gorman <gormanky@ohsu.edu>
 
 aicc.loess <- function(fit) {
     # compute AIC_C for a LOESS fit, from:
@@ -32,9 +32,7 @@ autoloess <- function(fit, span=c(.1, .9)) {
         # loss function in form to be used by optimize
         f <- function(span) aicc.loess(update(fit, span=span))
         # find best loess according to loss function
-        #tryCatch({
             span.opt <- optimize(f, span)$minimum
-        #}, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
 
         return(span.opt)
 
