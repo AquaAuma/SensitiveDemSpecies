@@ -184,7 +184,7 @@ survey <- survey %>%
 survey <- survey %>%
   mutate(numcpue = TotalNo/Area.swept,
          wtcpue = CatCatchWgt/(Area.swept*1000),
-         numh = TotalNo*30/HaulDur, # per 30', not per hour
+         numh = TotalNo/HaulDur, # per 30', not per hour
          wgth = CatCatchWgt*60/(HaulDur*1000),
          num = TotalNo,
          wgt = CatCatchWgt,
@@ -323,4 +323,4 @@ survey <- survey %>%
 ##########################################################################################
 #### SAVE DATA
 ##########################################################################################
-save(survey, file='data/ICESsurveysByc10072020.RData')
+save(survey, file='data/ICESsurveysByc11082020.RData')

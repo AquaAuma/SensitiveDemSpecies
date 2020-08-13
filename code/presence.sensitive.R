@@ -41,7 +41,7 @@ sensi <- sensi %>%
   mutate(Species = recode(Species, 'Dipturus batis-complex'='Dipturus spp','Mustelus mustelus/asterias'='Mustelus spp'))
 
 ### Load species abundances across surveys
-load('data/ICESsurveysByc10072020.RData')
+load('data/ICESsurveysByc11082020.RData')
 
 ### Load ICES rectangles shapefiles
 rect <- readOGR(dsn = "data/ICES_rectangles/ICES_Statistical_Rectangles_Eco.shp",layer="ICES_Statistical_Rectangles_Eco")
@@ -92,7 +92,7 @@ select50 <- sensi.spp
 last.year <- 2019
 
 ### Run to get the index
-pdf(file='results/Prob.presence.spp.pdf')
+pdf(file='results/Prob.presence.spp.11.08.pdf')
 for (i in 1:length(sensi.spp)){
   species <- sensi.spp[i]
   print(species)

@@ -70,13 +70,13 @@ lmLmat <- lm(log(Lmat, base=10)~log(Linf, base=10), data=trait)
 
 # Model to estimate Lmet from Linf for oviparous spp.
 trait.ovi <- subset(trait, Taxonomy=='Oviparous' & Lmet>2)
-plot(Lmet ~ Linf, data=trait.ovi)
-lmLmet.ovi <- lm(Lmet ~ Linf, data=trait.ovi)
+plot(Lmet ~ Linf, data=trait.ovi, log='xy')
+lmLmet.ovi <- lm(log(Lmet, base=10) ~ log(Linf, base=10), data=trait.ovi)
 
 # Model to estimate Lmet from Linf for Ovoviparous and viviparous spp.
 trait.vivi <- subset(trait, Taxonomy %in% c('Viviparous','Ovoviparous'))
-plot(Lmet ~ Linf, data=trait.vivi)
-lmLmet.vivi <- lm(Lmet ~ Linf, data=trait.vivi)
+plot(Lmet ~ Linf, data=trait.vivi, log='xy')
+lmLmet.vivi <- lm(log(Lmet, base=10) ~ log(Linf, base=10), data=trait.vivi)
 
 
 ##########################################################################################
@@ -111,9 +111,14 @@ if (is.na(lmat)){lmat <- 10^(lmLmat$coefficients[1])*linf^(lmLmat$coefficients[2
 # from the present study
 
 if (is.na(lmet)){
-  if(repro == 'Oviparous'){lmet <- round(exp(-0.2639+0.6009*log(linf)))} # NB round on R transforms 2.5 in 2, but 2.5 --> 3 in EXCEL
-  if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(exp(-0.6164+0.7977*log(linf)))}
-}
+  #if(repro == 'Oviparous'){lmet <- round(10^(lmLmet.ovi$coefficients[1])*linf^(lmLmet.ovi$coefficients[2]))}
+  #if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(10^(lmLmet.vivi$coefficients[1]))*linf^(lmLmet.vivi$coefficients[2])}
+  #if(repro == 'Oviparous'){lmet <- round(exp(-0.2639+0.6009*log(linf)))} # NB round on R transforms 2.5 in 2, but 2.5 --> 3 in EXCEL
+  #if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(exp(-0.6164+0.7977*log(linf)))}
+  if(repro == 'Oviparous'){lmet <- round(0.7917*linf^(0.5921))}
+  if(repro == 'Ovoviviparous' | repro == 'Viviparous'){lmet <- round(0.5398*linf^(0.7977))}
+  
+  }
 # from the present study
 
 
@@ -237,4 +242,4 @@ fishSensi <- subset(fishSensi, !is.na(f.factor) & fish.sensi>0.25)
 trait$Fsensi[s] <- fishSensi$f.factor[nrow(fishSensi)]
 }
 
-write.csv(trait, 'results/Sensi.csv')
+write.csv(trait, 'results/Sensi.13.08.csv')

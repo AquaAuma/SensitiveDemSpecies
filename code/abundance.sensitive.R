@@ -41,7 +41,7 @@ sensi <- sensi %>%
   mutate(Species = recode(Species, 'Dipturus batis-complex'='Dipturus spp','Mustelus mustelus/asterias'='Mustelus spp'))
 
 ### Load species abundances across surveys
-load('data/ICESsurveysByc10072020.RData')
+load('data/ICESsurveysByc11082020.RData')
 
 ### Load ICES rectangles shapefiles
 rect <- readOGR(dsn = "data/ICES_rectangles/ICES_Statistical_Rectangles_Eco.shp",layer="ICES_Statistical_Rectangles_Eco")
@@ -116,7 +116,7 @@ plot.loess='FALSE'
 last.year <- 2019
 
 ### Run to get the index
-pdf(file='results/Abundance.Index.spp.pdf')
+pdf(file='results/Abundance.Index.spp.12.08.pdf')
 for (i in 1:length(select50)){
 species <- select50[i]
 print(species)
@@ -172,9 +172,10 @@ yearly.s.mean <- survey.spp %>%
 
 mean.per.survey <- yearly.s.mean %>% # to remove surveys with only 0
   group_by(Survey) %>% 
-  summarize(numh=mean(numh)) %>% 
+  summarize(numh=max(numh)) %>% 
   filter(numh>0)
 
+yearly.s.mean <- data.frame(yearly.s.mean)
 yearly.s.mean <- yearly.s.mean %>% 
   filter(Survey %in% mean.per.survey$Survey)
 
@@ -197,7 +198,7 @@ yearly.s.mean <- yearly.s.mean %>%
          numh = numh/mean.recent,
          num = num/mean.recent,
          numcpue = numcpue/mean.recent) %>% 
-  filter(numh<=5) # remove year with 5 times the long-term average
+  filter(numh<=50) # remove year when abundance is more than 5 times the long-term average
 
 mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
 index.bstd <- ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
@@ -206,8 +207,7 @@ index.bstd <- ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey
   theme(text=element_text(size=11))
 
 
-### 6. Get Loess per survey
-# fitted to logged positive catches of each species in each survey
+### 5. Get Loess per survey and across surveys
 to.loess <- yearly.s.mean %>% 
   filter(numh>0)
 
@@ -222,6 +222,7 @@ for(s in 1:length(surveys)){
     data.s <- subset(to.loess, Survey==surveys[s])
     if(nrow(data.s)>2){
       # loess with whatever span, default is 0.75
+      # fitted to logged positive catches of each species in each survey
       loess.s <- loess(log(numh) ~ Year, data=data.s)
       # auto-optimization, returning the best span value
       span <- autoloess(loess.s)
@@ -264,7 +265,7 @@ for(s in 1:length(surveys)){
     }
 }
 
-# plot indices per surveys after selecting combinations of spp-surveys to keep basedon loess
+# plot indices per surveys after selecting combinations of spp-surveys to keep based on loess
 if(length(comb.surveys)>0){
   weights <- data.frame(cbind(comb.surveys, weight))
   yearly.s.mean <- yearly.s.mean %>% 
@@ -278,7 +279,7 @@ if(length(comb.surveys)>0){
   index <- ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=1) +
           theme_bw() + scale_color_manual(name=dat.col$Survey, values=as.character(dat.col$mycolors)) + 
           ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-          geom_hline(yintercept=1, lwd=1, lty=2, col='black') + xlim(1960,2020) + ylim(0,6) +
+          geom_hline(yintercept=1, lwd=1, lty=2, col='black') + xlim(1960,2020) + #ylim(0,6) +
           theme(text=element_text(size=11)) + theme(legend.position = 'none')
 
   ### Final loess with temporal change
@@ -300,7 +301,7 @@ if(length(comb.surveys)>0){
   
   loess.w <- ggplot(dat.index, aes(x=Year, y=numh, size=weight)) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
     xlab('Year') + ylab('numcpue/average 2010???2019') + theme(text=element_text(size=11)) + 
-    theme(legend.position = 'none') + xlim(1960,2020) + ylim(0,5) + ggtitle('Weighted Loess') +
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Weighted Loess') + #ylim(0,5) + 
     geom_line(data=dat.fit, aes(x=Year, y=fit), lwd=1, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.low), lwd=0.5, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.high), lwd=0.5, col='black')
@@ -322,12 +323,20 @@ if(length(comb.surveys)>0){
   
   loess.now <- ggplot(dat.index, aes(x=Year, y=numh)) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
     xlab('Year') + ylab('numcpue/average 2010???2019') + theme(text=element_text(size=11)) + 
-    theme(legend.position = 'none') + xlim(1960,2020) + ylim(0,5) + ggtitle('Classic Loess') +
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Classic Loess') + #ylim(0,5) + 
     geom_line(data=dat.fit, aes(x=Year, y=fit), lwd=1, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.low), lwd=0.5, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.high), lwd=0.5, col='black')
 
   egg::ggarrange(habitat, index, loess.now, loess.w, labels=c('','','',''), nrow=2)
+  
+  #dat.indices <- rbind(dat.incides, dat.index)
+  
+  
+  ### Bootstrapped relationship
+  library(rcompanion)
+  groupwiseMean()
+  
   rm(dat.index, loess.now, loess.w, index, habitat)
 }
 }
