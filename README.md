@@ -1,5 +1,5 @@
 # SensitiveDemSpecies
-Extending the analysis on sensitive species developed by Rindorf et al., (2020, Journal of Applied Ecology) Are fish sensitive to trawling recovering in the Northeast Atlantic? 
+Extending the analysis on sensitive species developed by Rindorf et al., (2020, Journal of Applied Ecology) Are fish sensitive to trawling recovering in the Northeast Atlantic? (https://besjournals.onlinelibrary.wiley.com/doi/10.1111/1365-2664.13693)
 
 Analysis based on a population model (Gislason et al., 2008 https://doi.org/10.1093/icesjms/fsn035), a collection of traits, exploitation of demersal fish species (Walker et al., 2017 https://doi.org/10.1093/icesjms/fsw250), and abundances from European trawl surveys (https://datras.ices.dk/)
 
