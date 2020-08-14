@@ -242,4 +242,4 @@ fishSensi <- subset(fishSensi, !is.na(f.factor) & fish.sensi>0.25)
 trait$Fsensi[s] <- fishSensi$f.factor[nrow(fishSensi)]
 }
 
-write.csv(trait, 'results/Sensi.13.08.csv')
+write.csv(trait, 'results/Sensi.csv')

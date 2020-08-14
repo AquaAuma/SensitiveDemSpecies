@@ -92,7 +92,7 @@ select50 <- sensi.spp
 last.year <- 2019
 
 ### Run to get the index
-pdf(file='results/Prob.presence.spp.11.08.pdf')
+pdf(file='results/Prob.presence.spp.pdf')
 for (i in 1:length(sensi.spp)){
   species <- sensi.spp[i]
   print(species)

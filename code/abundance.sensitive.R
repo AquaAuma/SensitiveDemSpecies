@@ -116,7 +116,7 @@ plot.loess='FALSE'
 last.year <- 2019
 
 ### Run to get the index
-pdf(file='results/Abundance.Index.spp.12.08.pdf')
+pdf(file='results/Abundance.Index.spp.pdf')
 for (i in 1:length(select50)){
 species <- select50[i]
 print(species)
@@ -198,7 +198,7 @@ yearly.s.mean <- yearly.s.mean %>%
          numh = numh/mean.recent,
          num = num/mean.recent,
          numcpue = numcpue/mean.recent) %>% 
-  filter(numh<=50) # remove year when abundance is more than 5 times the long-term average
+  filter(numh<=5) # remove year when abundance is more than 5 times the long-term average
 
 mycolors <- colorRampPalette(brewer.pal(8, "RdYlBu"))(length(unique(yearly.s.mean$Survey)))
 index.bstd <- ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=2) +
@@ -279,7 +279,7 @@ if(length(comb.surveys)>0){
   index <- ggplot(yearly.s.mean, aes(x=Year, y=numh, group=Survey, col=Survey)) + geom_line(lwd=1) +
           theme_bw() + scale_color_manual(name=dat.col$Survey, values=as.character(dat.col$mycolors)) + 
           ylab(paste('numcpue/average ',last.decade[10],'-',last.decade[1], sep='')) +
-          geom_hline(yintercept=1, lwd=1, lty=2, col='black') + xlim(1960,2020) + #ylim(0,6) +
+          geom_hline(yintercept=1, lwd=1, lty=2, col='black') + xlim(1960,2020) + ylim(0,6) +
           theme(text=element_text(size=11)) + theme(legend.position = 'none')
 
   ### Final loess with temporal change
@@ -300,8 +300,8 @@ if(length(comb.surveys)>0){
   dat.fit$Year <- seq(from=min(dat.index$Year),to=last.year, by=1)
   
   loess.w <- ggplot(dat.index, aes(x=Year, y=numh, size=weight)) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
-    xlab('Year') + ylab('numcpue/average 2010???2019') + theme(text=element_text(size=11)) + 
-    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Weighted Loess') + #ylim(0,5) + 
+    xlab('Year') + ylab('numcpue/average 2010-2019') + theme(text=element_text(size=11)) + 
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Weighted Loess') + ylim(0,5) + 
     geom_line(data=dat.fit, aes(x=Year, y=fit), lwd=1, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.low), lwd=0.5, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.high), lwd=0.5, col='black')
@@ -322,21 +322,67 @@ if(length(comb.surveys)>0){
   dat.fit$Year <- seq(from=min(dat.index$Year),to=last.year, by=1)
   
   loess.now <- ggplot(dat.index, aes(x=Year, y=numh)) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
-    xlab('Year') + ylab('numcpue/average 2010???2019') + theme(text=element_text(size=11)) + 
-    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Classic Loess') + #ylim(0,5) + 
+    xlab('Year') + ylab('numcpue/average 2010-2019') + theme(text=element_text(size=11)) + 
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Classic Loess') + ylim(0,5) + 
     geom_line(data=dat.fit, aes(x=Year, y=fit), lwd=1, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.low), lwd=0.5, col='black') +
     geom_line(data=dat.fit, aes(x=Year, y=se.high), lwd=0.5, col='black')
 
-  egg::ggarrange(habitat, index, loess.now, loess.w, labels=c('','','',''), nrow=2)
+  ### Fit model only on logged positive values
+  dat.index <- yearly.s.mean[order(yearly.s.mean$Year),]
+  dat.index <- dat.index %>% 
+    filter(numh>0) %>% 
+    mutate(numh = log(numh, base=10))
+  loess.spp <- loess(numh ~ Year, data=dat.index, span=0.75)
+  # auto-optimization, returning the best span value
+  span <- autoloess(loess.spp)
+  print(span)
+  loess.spp <- loess(numh ~ Year, data=dat.index, span=span)
+  loess.p <- predict(loess.spp, newdata=seq(from=min(dat.index$Year),to=last.year, by=1), se=TRUE)
   
-  #dat.indices <- rbind(dat.incides, dat.index)
+  dat.fit <- data.frame(loess.p$fit)
+  names(dat.fit) <- 'fit'
+  dat.fit$se.low <- dat.fit$fit-2*loess.p$se.fit
+  dat.fit$se.high <- dat.fit$fit+2*loess.p$se.fit
+  dat.fit$Year <- seq(from=min(dat.index$Year),to=last.year, by=1)
+  
+  loess.log.pos <- ggplot(dat.index, aes(x=Year, y=10^(numh))) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
+    xlab('Year') + ylab('numcpue/average 2010-2019') + theme(text=element_text(size=11)) + 
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Classic Loess Log') + ylim(0,5) + 
+    geom_line(data=dat.fit, aes(x=Year, y=10^(fit)), lwd=1, col='black') +
+    geom_line(data=dat.fit, aes(x=Year, y=10^(se.low)), lwd=0.5, col='black') +
+    geom_line(data=dat.fit, aes(x=Year, y=10^(se.high)), lwd=0.5, col='black')
+  
+  ### Loess with weights on logged positive abundance values
+  ### With weights
+  dat.index <- yearly.s.mean[order(yearly.s.mean$Year),]
+  dat.index$weight <- as.numeric(as.vector(dat.index$weight))
+  dat.index <- dat.index %>% 
+    filter(numh>0) %>% 
+    mutate(numh = log(numh, base=10))
+  loess.spp.w <- loess(numh ~ Year, weights=weight, data=dat.index, span=0.75)
+  # auto-optimization, returning the best span value
+  span <- autoloess(loess.spp.w)
+  print(span)
+  loess.spp.w <- loess(numh ~ Year, weights=weight, data=dat.index, span=span)
+  loess.p.w <- predict(loess.spp.w, newdata=seq(from=min(dat.index$Year),to=last.year, by=1), se=TRUE)
+  
+  dat.fit <- data.frame(loess.p.w$fit)
+  names(dat.fit) <- 'fit'
+  dat.fit$se.low <- dat.fit$fit-2*loess.p.w$se.fit
+  dat.fit$se.high <- dat.fit$fit+2*loess.p.w$se.fit
+  dat.fit$Year <- seq(from=min(dat.index$Year),to=last.year, by=1)
+  
+  loess.log.pos.w <- ggplot(dat.index, aes(x=Year, y=10^(numh), size=weight)) + geom_point(shape=21, fill='lightgrey') + theme_bw() +
+    xlab('Year') + ylab('numcpue/average 2010-2019') + theme(text=element_text(size=11)) + 
+    theme(legend.position = 'none') + xlim(1960,2020) + ggtitle('Weighted Loess Log') + #ylim(0,5) + 
+    geom_line(data=dat.fit, aes(x=Year, y=10^(fit)), lwd=1, col='black') +
+    geom_line(data=dat.fit, aes(x=Year, y=10^(se.low)), lwd=0.5, col='black') +
+    geom_line(data=dat.fit, aes(x=Year, y=10^(se.high)), lwd=0.5, col='black')
   
   
-  ### Bootstrapped relationship
-  library(rcompanion)
-  groupwiseMean()
-  
+  egg::ggarrange(habitat, index, loess.now, loess.w, loess.log.pos, loess.log.pos.w,
+                 labels=c('','','','','',''), nrow=2)
   rm(dat.index, loess.now, loess.w, index, habitat)
 }
 }
